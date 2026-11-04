@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check, FileText } from 'lucide-react';
 import { DoctorNote } from '../../types';
 
@@ -17,6 +17,11 @@ export const EditNoteModal: React.FC<EditNoteModalProps> = ({
 }) => {
   const [content, setContent] = useState(note.content);
   const [adherence, setAdherence] = useState(note.adherence);
+
+  useEffect(() => {
+    setContent(note.content);
+    setAdherence(note.adherence);
+  }, [note]);
 
   if (!isOpen) return null;
 

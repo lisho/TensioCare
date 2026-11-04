@@ -12,6 +12,7 @@ interface ReportScreenProps {
   doctorNote: DoctorNote;
   onEditDoctorNote: () => void;
   onOpenPdfReport: () => void;
+  onDownloadPdf?: () => void;
   onOpenShareModal: () => void;
   onDownloadCsv: () => void;
 }
@@ -22,6 +23,7 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
   doctorNote,
   onEditDoctorNote,
   onOpenPdfReport,
+  onDownloadPdf,
   onOpenShareModal,
   onDownloadCsv,
 }) => {
@@ -447,14 +449,25 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
           EXPORTACIÓN MÉDICA
         </span>
 
-        {/* Primary PDF Export Button */}
-        <button
-          onClick={onOpenPdfReport}
-          className="w-full py-3.5 px-4 rounded-xl bg-[#005570] hover:bg-[#004257] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#005570]/20 transition-all cursor-pointer"
-        >
-          <FileText className="w-4 h-4" />
-          <span>Exportar en PDF para médico</span>
-        </button>
+        {/* Primary PDF Export Buttons */}
+        <div className="space-y-2">
+          <button
+            onClick={onDownloadPdf || onOpenPdfReport}
+            className="w-full py-3.5 px-4 rounded-xl bg-[#005570] hover:bg-[#004257] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#005570]/20 transition-all cursor-pointer"
+            title="Descargar archivo PDF oficial del plan directamente"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar Informe del Plan en PDF</span>
+          </button>
+
+          <button
+            onClick={onOpenPdfReport}
+            className="w-full py-2.5 px-3 rounded-xl bg-[#e6f2fb] hover:bg-[#d8e9f8] text-[#005570] font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Ver vista previa del informe clínico</span>
+          </button>
+        </div>
 
         {/* Secondary Action Buttons */}
         <div className="grid grid-cols-2 gap-2">

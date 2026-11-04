@@ -3,6 +3,10 @@
   command = "npm run build"
   functions = "netlify/functions"
 
+[build.environment]
+  NETLIFY_DRAWER_ENABLED = "false"
+  NETLIFY_FEEDBACK_DISABLED = "true"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"

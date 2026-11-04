@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  TabType, Cycle, Measurement, DoctorNote, TimeOfDay 
+  TabType, Cycle, Measurement, DoctorNote, TimeOfDay, UserProfile 
 } from './types';
 import { 
-  initialCycles, initialMeasurements, initialDoctorNote 
+  initialCycles, initialMeasurements, initialDoctorNote, initialUserProfile 
 } from './data/initialData';
 import { Header, UserProfileModal } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -17,7 +17,9 @@ import { EditNoteModal } from './components/modals/EditNoteModal';
 import { ShareModal } from './components/modals/ShareModal';
 import { EditMeasurementModal } from './components/modals/EditMeasurementModal';
 import { ConfirmDeleteModal } from './components/modals/ConfirmDeleteModal';
+import { ResetDbConfirmModal } from './components/modals/ResetDbConfirmModal';
 import { downloadMeasurementsCsv } from './utils/csvExport';
+import { generatePlanPdfReport } from './utils/pdfExport';
 import { 
   fetchServerData, 
   saveMeasurementToServer, 
@@ -25,6 +27,7 @@ import {
   deleteMeasurementOnServer,
   saveCycleToServer, 
   updateNoteOnServer,
+  updateUserProfileOnServer,
   resetServerDatabase,
   checkServerHealth 
 } from './services/api';
@@ -38,6 +41,7 @@ export default function App() {
   const [activeCycleId, setActiveCycleId] = useState<string>('ciclo-actual');
   const [measurements, setMeasurements] = useState<Measurement[]>(initialMeasurements);
   const [doctorNote, setDoctorNote] = useState<DoctorNote>(initialDoctorNote);
+  const [userProfile, setUserProfile] = useState<UserProfile>(initialUserProfile);
   const [preselectedTimeOfDay, setPreselectedTimeOfDay] = useState<TimeOfDay>('manana');
   
   // Storage and Sync state
@@ -47,6 +51,7 @@ export default function App() {
 
   // Modals state
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isResetDbModalOpen, setIsResetDbModalOpen] = useState(false);
   const [isNewCycleOpen, setIsNewCycleOpen] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -66,6 +71,7 @@ export default function App() {
       if (data.cycles) setCycles(data.cycles);
       if (data.measurements) setMeasurements(data.measurements);
       if (data.doctorNote) setDoctorNote(data.doctorNote);
+      if (data.userProfile) setUserProfile(data.userProfile);
       setStorageSource(data.source);
       if (data.lastModified) {
         setLastServerSync(new Date(data.lastModified).toLocaleTimeString('es-ES'));
@@ -207,10 +213,23 @@ export default function App() {
     setTimeout(() => setSyncToastMessage(null), 3000);
   };
 
+  const handleUpdateUserProfile = async (updated: UserProfile) => {
+    setUserProfile(updated);
+    setSyncToastMessage('Guardando ficha del paciente en el servidor JSON...');
+    const res = await updateUserProfileOnServer(updated);
+    if (res.success) {
+      setLastServerSync(new Date().toLocaleTimeString('es-ES'));
+      setSyncToastMessage('✓ Ficha del paciente guardada y persistida en el JSON.');
+    } else {
+      setSyncToastMessage('Ficha actualizada localmente.');
+    }
+    setTimeout(() => setSyncToastMessage(null), 3500);
+  };
+
   const handleResetDb = async () => {
     await resetServerDatabase();
     await loadDataFromServer();
-    setSyncToastMessage('Base de datos JSON restaurada a 0.');
+    setSyncToastMessage('✓ Base de datos JSON restaurada a 0.');
     setTimeout(() => setSyncToastMessage(null), 3000);
   };
 
@@ -226,6 +245,17 @@ export default function App() {
     downloadMeasurementsCsv(activeCycle, measurements);
     setSyncToastMessage('Archivo CSV generado y descargado.');
     setTimeout(() => setSyncToastMessage(null), 3000);
+  };
+
+  const handleDownloadPlanPdf = (targetCycle?: Cycle) => {
+    const cycle = targetCycle || activeCycle;
+    const cycleMeasurements = cycle.id === activeCycle.id
+      ? measurements
+      : (cycle.measurements || []);
+
+    generatePlanPdfReport(cycle, cycleMeasurements, doctorNote, userProfile);
+    setSyncToastMessage(`✓ Generando informe PDF: ${cycle.title}`);
+    setTimeout(() => setSyncToastMessage(null), 3500);
   };
 
   return (
@@ -251,14 +281,6 @@ export default function App() {
             title="Recargar datos del servidor JSON"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-          </button>
-
-          <button
-            onClick={handleResetDb}
-            className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-md cursor-pointer transition-colors"
-            title="Borrar todas las mediciones y comenzar desde 0"
-          >
-            Reiniciar a 0
           </button>
         </div>
 
@@ -318,6 +340,7 @@ export default function App() {
         {/* Top App Bar */}
         <Header
           currentTab={currentTab}
+          userProfile={userProfile}
           onOpenProfile={() => setIsProfileOpen(true)}
         />
 
@@ -353,6 +376,7 @@ export default function App() {
               onEditMeasurement={setEditingMeasurement}
               onDeleteMeasurement={handleDeleteMeasurement}
               onRequestDelete={setMeasurementToDelete}
+              onDownloadPlanPdf={() => handleDownloadPlanPdf(activeCycle)}
             />
           )}
 
@@ -378,6 +402,7 @@ export default function App() {
               onEditMeasurement={setEditingMeasurement}
               onDeleteMeasurement={handleDeleteMeasurement}
               onRequestDelete={setMeasurementToDelete}
+              onDownloadPlanPdf={handleDownloadPlanPdf}
             />
           )}
 
@@ -388,6 +413,7 @@ export default function App() {
               doctorNote={doctorNote}
               onEditDoctorNote={() => setIsEditNoteModalOpen(true)}
               onOpenPdfReport={() => setIsPdfModalOpen(true)}
+              onDownloadPdf={() => handleDownloadPlanPdf(activeCycle)}
               onOpenShareModal={() => setIsShareModalOpen(true)}
               onDownloadCsv={handleDownloadCsv}
             />
@@ -407,52 +433,77 @@ export default function App() {
       </div>
 
       {/* Global Modals */}
-      <UserProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        onResetDb={handleResetDb}
-      />
+      {isProfileOpen && (
+        <UserProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          userProfile={userProfile}
+          onSaveProfile={handleUpdateUserProfile}
+          onRequestResetDb={() => setIsResetDbModalOpen(true)}
+        />
+      )}
 
-      <NewCycleModal
-        isOpen={isNewCycleOpen}
-        onClose={() => setIsNewCycleOpen(false)}
-        onCreateCycle={handleCreateCycle}
-      />
+      {isResetDbModalOpen && (
+        <ResetDbConfirmModal
+          isOpen={isResetDbModalOpen}
+          onClose={() => setIsResetDbModalOpen(false)}
+          onConfirmReset={handleResetDb}
+        />
+      )}
 
-      <PdfReportModal
-        isOpen={isPdfModalOpen}
-        onClose={() => setIsPdfModalOpen(false)}
-        cycle={activeCycle}
-        measurements={measurements}
-        doctorNote={doctorNote}
-      />
+      {isNewCycleOpen && (
+        <NewCycleModal
+          isOpen={isNewCycleOpen}
+          onClose={() => setIsNewCycleOpen(false)}
+          onCreateCycle={handleCreateCycle}
+        />
+      )}
 
-      <EditNoteModal
-        isOpen={isEditNoteModalOpen}
-        onClose={() => setIsEditNoteModalOpen(false)}
-        note={doctorNote}
-        onSave={handleUpdateDoctorNote}
-      />
+      {isPdfModalOpen && (
+        <PdfReportModal
+          isOpen={isPdfModalOpen}
+          onClose={() => setIsPdfModalOpen(false)}
+          cycle={activeCycle}
+          measurements={measurements}
+          doctorNote={doctorNote}
+          userProfile={userProfile}
+        />
+      )}
 
-      <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-      />
+      {isEditNoteModalOpen && (
+        <EditNoteModal
+          isOpen={isEditNoteModalOpen}
+          onClose={() => setIsEditNoteModalOpen(false)}
+          note={doctorNote}
+          onSave={handleUpdateDoctorNote}
+        />
+      )}
 
-      <EditMeasurementModal
-        isOpen={!!editingMeasurement}
-        measurement={editingMeasurement}
-        onClose={() => setEditingMeasurement(null)}
-        onSave={handleUpdateMeasurement}
-        onDelete={handleDeleteMeasurement}
-      />
+      {isShareModalOpen && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+        />
+      )}
 
-      <ConfirmDeleteModal
-        isOpen={!!measurementToDelete}
-        measurement={measurementToDelete}
-        onClose={() => setMeasurementToDelete(null)}
-        onConfirm={handleDeleteMeasurement}
-      />
+      {editingMeasurement && (
+        <EditMeasurementModal
+          isOpen={!!editingMeasurement}
+          measurement={editingMeasurement}
+          onClose={() => setEditingMeasurement(null)}
+          onSave={handleUpdateMeasurement}
+          onDelete={handleDeleteMeasurement}
+        />
+      )}
+
+      {measurementToDelete && (
+        <ConfirmDeleteModal
+          isOpen={!!measurementToDelete}
+          measurement={measurementToDelete}
+          onClose={() => setMeasurementToDelete(null)}
+          onConfirm={handleDeleteMeasurement}
+        />
+      )}
     </div>
   );
 }

@@ -20,17 +20,15 @@ export const EditMeasurementModal: React.FC<EditMeasurementModalProps> = ({
   onSave,
   onDelete,
 }) => {
-  if (!isOpen || !measurement) return null;
-
-  const [tas, setTas] = useState<number>(measurement.tas);
-  const [tad, setTad] = useState<number>(measurement.tad);
-  const [pulse, setPulse] = useState<number>(measurement.pulse || 70);
-  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(measurement.timeOfDay);
-  const [date, setDate] = useState<string>(measurement.date);
-  const [time, setTime] = useState<string>(measurement.time);
-  const [arm, setArm] = useState<'Brazo Izq.' | 'Brazo Der.'>(measurement.arm);
-  const [selectedContext, setSelectedContext] = useState<string[]>(measurement.context || []);
-  const [notes, setNotes] = useState<string>(measurement.notes || '');
+  const [tas, setTas] = useState<number>(measurement?.tas || 120);
+  const [tad, setTad] = useState<number>(measurement?.tad || 80);
+  const [pulse, setPulse] = useState<number>(measurement?.pulse || 70);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(measurement?.timeOfDay || 'manana');
+  const [date, setDate] = useState<string>(measurement?.date || '');
+  const [time, setTime] = useState<string>(measurement?.time || '');
+  const [arm, setArm] = useState<'Brazo Izq.' | 'Brazo Der.'>(measurement?.arm || 'Brazo Izq.');
+  const [selectedContext, setSelectedContext] = useState<string[]>(measurement?.context || []);
+  const [notes, setNotes] = useState<string>(measurement?.notes || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
 
   useEffect(() => {
@@ -47,6 +45,8 @@ export const EditMeasurementModal: React.FC<EditMeasurementModalProps> = ({
       setShowDeleteConfirm(false);
     }
   }, [measurement]);
+
+  if (!isOpen || !measurement) return null;
 
   const classification = classifyBloodPressure(tas, tad);
 

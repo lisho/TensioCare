@@ -179,6 +179,21 @@ export const handler = async (event: any) => {
       };
     }
 
+    // PUT /api/user-profile
+    if (pathPart === 'user-profile' && method === 'PUT') {
+      const body = JSON.parse(event.body || '{}');
+      db.userProfile = {
+        ...(db.userProfile || {}),
+        ...body,
+      };
+      await saveDb(db);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, userProfile: db.userProfile }),
+      };
+    }
+
     // GET /api/health
     if (pathPart === 'health' && method === 'GET') {
       return {

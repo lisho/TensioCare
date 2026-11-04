@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#005570" />
+      <stop offset="50%" stop-color="#076785" />
+      <stop offset="100%" stop-color="#0e7c9c" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Heart & Clinical Pulse Waveform -->
+  <g filter="url(#shadow)" transform="translate(48, 56) scale(0.8125)">
+    <!-- Stylized Heart Outline -->
+    <path
+      d="M256 460 C256 460 64 340 64 196 C64 116 128 64 196 64 C236 64 256 96 256 96 C256 96 276 64 316 64 C384 64 448 116 448 196 C448 340 256 460 256 460 Z"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="26"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- ECG Pulse Line Cutting Through -->
+    <path
+      d="M100 240 L190 240 L220 180 L256 310 L292 150 L324 260 L350 240 L412 240"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="24"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- Healthy Status Indicator Dot -->
+    <circle cx="380" cy="110" r="28" fill="#10b981" stroke="#ffffff" stroke-width="8" />
+  </g>
+</svg>

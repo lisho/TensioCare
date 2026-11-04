@@ -37,3 +37,28 @@
     display: block !important;
   }
 }
+
+/* Complete suppression of Netlify Drawer, feedback badge, and floating logos */
+[data-netlify-drawer],
+#netlify-badge,
+.netlify-badge,
+#netlify-feedback-badge,
+[class*="netlify-drawer"],
+[id*="netlify-drawer"],
+[id*="netlify-badge"],
+[data-testid="feedback-badge"],
+[data-testid*="netlify"],
+div:has(> a[href*="netlify.com"]),
+iframe[src*="netlify"],
+iframe[id*="netlify"],
+a[href*="netlify.com"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  clip: rect(0, 0, 0, 0) !important;
+  z-index: -9999 !important;
+}

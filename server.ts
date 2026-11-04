@@ -184,6 +184,31 @@ app.put('/api/notes', async (req: Request, res: Response) => {
   }
 });
 
+app.put('/api/user-profile', async (req: Request, res: Response) => {
+  try {
+    const updatedProfile = req.body;
+    if (!updatedProfile || !updatedProfile.name) {
+      return res.status(400).json({ error: 'Datos de perfil incompletos' });
+    }
+
+    const db = await readDb();
+    if (!db) {
+      return res.status(500).json({ error: 'Error en la base de datos JSON' });
+    }
+
+    db.userProfile = {
+      ...(db.userProfile || {}),
+      ...updatedProfile,
+    };
+
+    await writeDb(db);
+    res.json({ success: true, userProfile: db.userProfile });
+  } catch (error) {
+    console.error('Error updating userProfile in JSON:', error);
+    res.status(500).json({ error: 'Error al actualizar el perfil en el servidor' });
+  }
+});
+
 app.post('/api/reset', async (_req: Request, res: Response) => {
   try {
     // Reset to clean starting state from 0

@@ -1,7 +1,8 @@
 import React from 'react';
 import { X, Printer, ShieldCheck, Heart, Download } from 'lucide-react';
-import { Cycle, DoctorNote, Measurement } from '../../types';
-import { userProfileData } from '../../data/initialData';
+import { Cycle, DoctorNote, Measurement, UserProfile } from '../../types';
+import { initialUserProfile } from '../../data/initialData';
+import { generatePlanPdfReport } from '../../utils/pdfExport';
 
 interface PdfReportModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface PdfReportModalProps {
   cycle: Cycle;
   measurements: Measurement[];
   doctorNote: DoctorNote;
+  userProfile?: UserProfile;
 }
 
 export const PdfReportModal: React.FC<PdfReportModalProps> = ({
@@ -17,8 +19,15 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
   cycle,
   measurements,
   doctorNote,
+  userProfile,
 }) => {
   if (!isOpen) return null;
+
+  const profile = userProfile || initialUserProfile;
+
+  const handleDownloadPdf = () => {
+    generatePlanPdfReport(cycle, measurements, doctorNote, profile);
+  };
 
   const handlePrint = () => {
     window.print();
@@ -35,17 +44,25 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#005570]" />
             <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Vista previa de Documento Clínico AMPA
+              Documento Clínico AMPA (PDF)
             </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handlePrint}
+              onClick={handleDownloadPdf}
               className="px-3.5 py-1.5 bg-[#005570] hover:bg-[#004359] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+              title="Descargar archivo PDF directamente"
+            >
+              <Download className="w-4 h-4" />
+              <span>Descargar PDF</span>
+            </button>
+            <button
+              onClick={handlePrint}
+              className="p-1.5 text-slate-500 hover:text-[#005570] hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              title="Imprimir documento"
             >
               <Printer className="w-4 h-4" />
-              <span>Imprimir / PDF</span>
             </button>
             <button
               onClick={onClose}
@@ -85,13 +102,13 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Paciente</span>
-              <span className="font-bold text-slate-900">{userProfileData.name}</span>
-              <span className="text-slate-500 block text-[11px]">{userProfileData.age} años · DNI {userProfileData.dni}</span>
+              <span className="font-bold text-slate-900">{profile.name}</span>
+              <span className="text-slate-500 block text-[11px]">{profile.age} años · DNI {profile.dni}</span>
             </div>
 
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Médico Remitente</span>
-              <span className="font-bold text-slate-900">{doctorNote.doctorName}</span>
+              <span className="font-bold text-slate-900">{doctorNote.doctorName || profile.doctor}</span>
               <span className="text-slate-500 block text-[11px]">{doctorNote.specialty}</span>
             </div>
 
@@ -214,7 +231,7 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
         </div>
 
         {/* Footer controls */}
-        <div className="flex justify-end gap-3 no-print">
+        <div className="flex flex-wrap items-center justify-end gap-2.5 no-print pt-2">
           <button
             onClick={onClose}
             className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
@@ -223,10 +240,17 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
           </button>
           <button
             onClick={handlePrint}
-            className="px-5 py-2.5 bg-[#005570] hover:bg-[#004359] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>Imprimir Informe Oficial</span>
+            <span>Imprimir</span>
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            className="px-5 py-2.5 bg-[#005570] hover:bg-[#004359] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer active:scale-[0.99]"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar Informe en PDF</span>
           </button>
         </div>
       </div>

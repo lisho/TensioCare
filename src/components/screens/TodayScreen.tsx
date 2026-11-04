@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   Sun, Moon, Heart, User, CheckCircle2, 
-  ChevronRight, Calendar, Activity, Info, ShieldCheck, Plus, Edit2, Trash2
+  ChevronRight, Calendar, Activity, Info, ShieldCheck, Plus, Edit2, Trash2, Download
 } from 'lucide-react';
 import { Cycle, Measurement } from '../../types';
 import { calculateStats, classifyBloodPressure } from '../../utils/eshClassifier';
@@ -18,6 +18,7 @@ interface TodayScreenProps {
   onEditMeasurement: (measurement: Measurement) => void;
   onDeleteMeasurement: (id: string) => void;
   onRequestDelete?: (measurement: Measurement) => void;
+  onDownloadPlanPdf?: () => void;
 }
 
 export const TodayScreen: React.FC<TodayScreenProps> = ({
@@ -31,6 +32,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   onEditMeasurement,
   onDeleteMeasurement,
   onRequestDelete,
+  onDownloadPlanPdf,
 }) => {
   const stats = calculateStats(measurements);
   const completedTodayCount = (morningMeasurement ? 1 : 0) + (nightMeasurement ? 1 : 0);
@@ -116,6 +118,21 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
             className="bg-[#005570] h-full rounded-full transition-all duration-500"
             style={{ width: `${Math.max(2, activeCycle.progressPercent)}%` }}
           />
+        </div>
+
+        {/* Quick action: Descargar informe PDF */}
+        <div className="mt-2.5 pt-2 border-t border-blue-200/40 flex items-center justify-between text-xs">
+          <span className="text-[11px] text-slate-500 font-medium">
+            {measurements.length} de {activeCycle.totalTakes} tomas registradas
+          </span>
+          <button
+            onClick={onDownloadPlanPdf}
+            className="text-[11px] font-bold text-[#005570] hover:text-[#004359] bg-white hover:bg-slate-50 px-2.5 py-1 rounded-lg border border-blue-200/60 shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer active:scale-95"
+            title="Descargar informe oficial en PDF de este plan"
+          >
+            <Download className="w-3 h-3" />
+            <span>Descargar PDF</span>
+          </button>
         </div>
       </div>
 

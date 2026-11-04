@@ -72,3 +72,14 @@ export interface DoctorNote {
   content: string;
   adherence: string;
 }
+
+export interface UserProfile {
+  name: string;
+  age: number;
+  dni: string;
+  doctor: string;
+  clinic: string;
+  currentMedication: string;
+  protocol: string;
+}
+

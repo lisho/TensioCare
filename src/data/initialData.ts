@@ -1,4 +1,4 @@
-import { Cycle, DoctorNote, Measurement } from '../types';
+import { Cycle, DoctorNote, Measurement, UserProfile } from '../types';
 
 export const initialMeasurements: Measurement[] = [];
 
@@ -42,7 +42,7 @@ export const initialDoctorNote: DoctorNote = {
   adherence: 'Protocolo recién iniciado: 0 de 14 tomas',
 };
 
-export const userProfileData = {
+export const initialUserProfile: UserProfile = {
   name: 'Carlos Méndez',
   age: 58,
   dni: '***4582-K',
@@ -51,3 +51,5 @@ export const userProfileData = {
   currentMedication: 'Enalapril 10mg (1 comprimido matutino en ayunas)',
   protocol: 'AMPA 7 Días (ESH/ESC 2023)',
 };
+
+export const userProfileData = initialUserProfile;

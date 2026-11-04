@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Plus, ShieldCheck, Sun, Moon, ChevronDown, ChevronUp, 
-  CheckCircle2, Send, Calendar, Clock, Heart, Filter, FolderKanban, Edit2, Trash2
+  CheckCircle2, Send, Calendar, Clock, Heart, Filter, FolderKanban, Edit2, Trash2,
+  Download, FileText
 } from 'lucide-react';
 import { Cycle, Measurement } from '../../types';
 import { classifyBloodPressure } from '../../utils/eshClassifier';
@@ -15,6 +16,7 @@ interface PeriodsScreenProps {
   onEditMeasurement: (measurement: Measurement) => void;
   onDeleteMeasurement: (id: string) => void;
   onRequestDelete?: (measurement: Measurement) => void;
+  onDownloadPlanPdf?: (cycle: Cycle) => void;
 }
 
 export const PeriodsScreen: React.FC<PeriodsScreenProps> = ({
@@ -26,6 +28,7 @@ export const PeriodsScreen: React.FC<PeriodsScreenProps> = ({
   onEditMeasurement,
   onDeleteMeasurement,
   onRequestDelete,
+  onDownloadPlanPdf,
 }) => {
   const [isBreakdownOpen, setIsBreakdownOpen] = useState<boolean>(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
@@ -211,18 +214,29 @@ export const PeriodsScreen: React.FC<PeriodsScreenProps> = ({
             </div>
           </div>
 
-          {/* Toggle Desglose de tomas Button */}
-          <button
-            onClick={() => setIsBreakdownOpen(!isBreakdownOpen)}
-            className="w-full py-2.5 px-3 rounded-xl bg-[#e6f0fa] hover:bg-[#d8e8f8] text-[#005570] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <span>Ver desglose de tomas</span>
-            {isBreakdownOpen ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
+          {/* Action buttons: Download Plan PDF & Toggle breakdown */}
+          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+            <button
+              onClick={() => onDownloadPlanPdf && onDownloadPlanPdf(activeCycle)}
+              className="flex-1 py-2.5 px-3 rounded-xl bg-[#005570] hover:bg-[#004359] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer active:scale-[0.99]"
+              title="Descargar informe oficial en PDF de este plan"
+            >
+              <Download className="w-4 h-4" />
+              <span>Descargar Informe en PDF</span>
+            </button>
+
+            <button
+              onClick={() => setIsBreakdownOpen(!isBreakdownOpen)}
+              className="py-2.5 px-3 rounded-xl bg-[#e6f0fa] hover:bg-[#d8e8f8] text-[#005570] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>{isBreakdownOpen ? 'Ocultar desglose' : 'Ver desglose'}</span>
+              {isBreakdownOpen ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+          </div>
 
           {/* Expandable breakdown list */}
           {isBreakdownOpen && (
@@ -393,17 +407,28 @@ export const PeriodsScreen: React.FC<PeriodsScreenProps> = ({
                       {cycle.classificationTag}
                     </span>
 
-                    <button
-                      onClick={() => setExpandedHistoryId(isExpanded ? null : cycle.id)}
-                      className="text-xs text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>Desplegar tomas</span>
-                      {isExpanded ? (
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      ) : (
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => onDownloadPlanPdf && onDownloadPlanPdf(cycle)}
+                        className="text-xs text-[#005570] hover:text-[#004359] font-bold flex items-center gap-1 bg-[#e8f2fa] hover:bg-[#d8e8f8] px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                        title="Descargar informe PDF de este plan"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>PDF</span>
+                      </button>
+
+                      <button
+                        onClick={() => setExpandedHistoryId(isExpanded ? null : cycle.id)}
+                        className="text-xs text-slate-500 hover:text-slate-800 font-medium flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Tomas</span>
+                        {isExpanded ? (
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
