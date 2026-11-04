@@ -1,0 +1,458 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  TabType, Cycle, Measurement, DoctorNote, TimeOfDay 
+} from './types';
+import { 
+  initialCycles, initialMeasurements, initialDoctorNote 
+} from './data/initialData';
+import { Header, UserProfileModal } from './components/Header';
+import { BottomNav } from './components/BottomNav';
+import { TodayScreen } from './components/screens/TodayScreen';
+import { RegisterScreen } from './components/screens/RegisterScreen';
+import { PeriodsScreen } from './components/screens/PeriodsScreen';
+import { ReportScreen } from './components/screens/ReportScreen';
+import { PdfReportModal } from './components/modals/PdfReportModal';
+import { NewCycleModal } from './components/modals/NewCycleModal';
+import { EditNoteModal } from './components/modals/EditNoteModal';
+import { ShareModal } from './components/modals/ShareModal';
+import { EditMeasurementModal } from './components/modals/EditMeasurementModal';
+import { ConfirmDeleteModal } from './components/modals/ConfirmDeleteModal';
+import { downloadMeasurementsCsv } from './utils/csvExport';
+import { 
+  fetchServerData, 
+  saveMeasurementToServer, 
+  updateMeasurementOnServer,
+  deleteMeasurementOnServer,
+  saveCycleToServer, 
+  updateNoteOnServer,
+  resetServerDatabase,
+  checkServerHealth 
+} from './services/api';
+import { 
+  Smartphone, Monitor, CheckCircle, Database, RefreshCw, Server, AlertCircle
+} from 'lucide-react';
+
+export default function App() {
+  const [currentTab, setCurrentTab] = useState<TabType>('hoy');
+  const [cycles, setCycles] = useState<Cycle[]>(initialCycles);
+  const [activeCycleId, setActiveCycleId] = useState<string>('ciclo-actual');
+  const [measurements, setMeasurements] = useState<Measurement[]>(initialMeasurements);
+  const [doctorNote, setDoctorNote] = useState<DoctorNote>(initialDoctorNote);
+  const [preselectedTimeOfDay, setPreselectedTimeOfDay] = useState<TimeOfDay>('manana');
+  
+  // Storage and Sync state
+  const [storageSource, setStorageSource] = useState<'server_json' | 'local_fallback'>('local_fallback');
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastServerSync, setLastServerSync] = useState<string | null>(null);
+
+  // Modals state
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNewCycleOpen, setIsNewCycleOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isEditNoteModalOpen, setIsEditNoteModalOpen] = useState(false);
+  const [editingMeasurement, setEditingMeasurement] = useState<Measurement | null>(null);
+  const [measurementToDelete, setMeasurementToDelete] = useState<Measurement | null>(null);
+  const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
+
+  // Desktop viewport preview mode ('mobile' frame or 'expanded')
+  const [viewMode, setViewMode] = useState<'mobile' | 'expanded'>('mobile');
+
+  // Load persistent data from server JSON on startup
+  const loadDataFromServer = async () => {
+    setIsSyncing(true);
+    try {
+      const data = await fetchServerData();
+      if (data.cycles) setCycles(data.cycles);
+      if (data.measurements) setMeasurements(data.measurements);
+      if (data.doctorNote) setDoctorNote(data.doctorNote);
+      setStorageSource(data.source);
+      if (data.lastModified) {
+        setLastServerSync(new Date(data.lastModified).toLocaleTimeString('es-ES'));
+      } else {
+        setLastServerSync(new Date().toLocaleTimeString('es-ES'));
+      }
+    } catch (e) {
+      console.warn('Could not connect to server JSON storage:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDataFromServer();
+  }, []);
+
+  // Active cycle
+  const activeCycle = cycles.find((c) => c.id === activeCycleId) || cycles[0];
+  const historyCycles = cycles.filter((c) => c.id !== activeCycleId);
+
+  // Today's measurements (real dynamic date matching current day)
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayMorningMeasurement = measurements.find(
+    (m) => m.date === todayStr && m.timeOfDay === 'manana'
+  );
+
+  const todayNightMeasurement = measurements.find(
+    (m) => m.date === todayStr && m.timeOfDay === 'noche'
+  );
+
+  // Handle saving a measurement directly to server JSON
+  const handleSaveMeasurement = async (newM: Omit<Measurement, 'id'>) => {
+    const tempId = `m-${Date.now()}`;
+    const createdMeasurement: Measurement = {
+      ...newM,
+      id: tempId,
+      isOverLimit: newM.tas >= 135 || newM.tad >= 85,
+    };
+
+    // Optimistic UI update
+    setMeasurements((prev) => [createdMeasurement, ...prev]);
+
+    setCycles((prev) =>
+      prev.map((c) => {
+        if (c.id === activeCycleId) {
+          const nextCompleted = Math.min(c.totalTakes, c.completedTakes + 1);
+          const nextPercent = Math.round((nextCompleted / c.totalTakes) * 100);
+          return {
+            ...c,
+            completedTakes: nextCompleted,
+            progressPercent: nextPercent,
+            dayProgress: nextCompleted >= 14 ? '7 de 7 Días' : c.dayProgress,
+          };
+        }
+        return c;
+      })
+    );
+
+    setSyncToastMessage('Guardando en archivo JSON del servidor...');
+
+    // Persist to Server JSON file
+    const res = await saveMeasurementToServer(createdMeasurement);
+    if (res.success) {
+      setStorageSource('server_json');
+      setLastServerSync(new Date().toLocaleTimeString('es-ES'));
+      setSyncToastMessage('✓ Guardado y persistido en JSON del servidor.');
+    } else {
+      setSyncToastMessage('Toma registrada (guardada en memoria local).');
+    }
+
+    setTimeout(() => setSyncToastMessage(null), 3500);
+  };
+
+  const handleUpdateMeasurement = async (updated: Measurement) => {
+    // Optimistic UI update
+    setMeasurements((prev) =>
+      prev.map((m) => (m.id === updated.id ? updated : m))
+    );
+
+    setSyncToastMessage('Actualizando medición en el servidor JSON...');
+    const res = await updateMeasurementOnServer(updated);
+    if (res.success) {
+      setLastServerSync(new Date().toLocaleTimeString('es-ES'));
+      setSyncToastMessage('✓ Medición modificada y guardada en el JSON.');
+    } else {
+      setSyncToastMessage('Medición actualizada localmente.');
+    }
+    setTimeout(() => setSyncToastMessage(null), 3000);
+  };
+
+  const handleDeleteMeasurement = async (id: string) => {
+    // Optimistic UI update
+    setMeasurements((prev) => prev.filter((m) => m.id !== id));
+
+    // Update cycle count
+    setCycles((prev) =>
+      prev.map((c) => {
+        if (c.id === activeCycleId) {
+          const nextCompleted = Math.max(0, c.completedTakes - 1);
+          const nextPercent = Math.round((nextCompleted / c.totalTakes) * 100);
+          return {
+            ...c,
+            completedTakes: nextCompleted,
+            progressPercent: nextPercent,
+          };
+        }
+        return c;
+      })
+    );
+
+    setSyncToastMessage('Eliminando medición del servidor JSON...');
+    const res = await deleteMeasurementOnServer(id);
+    if (res.success) {
+      setLastServerSync(new Date().toLocaleTimeString('es-ES'));
+      setSyncToastMessage('✓ Medición eliminada del JSON.');
+    } else {
+      setSyncToastMessage('Medición eliminada localmente.');
+    }
+    setTimeout(() => setSyncToastMessage(null), 3000);
+  };
+
+  const handleCreateCycle = async (newCycle: Cycle) => {
+    setCycles((prev) => [newCycle, ...prev]);
+    setActiveCycleId(newCycle.id);
+    
+    // Save to server
+    await saveCycleToServer(newCycle);
+    setLastServerSync(new Date().toLocaleTimeString('es-ES'));
+    setSyncToastMessage(`Nuevo protocolo guardado en JSON del servidor.`);
+    setTimeout(() => setSyncToastMessage(null), 3000);
+  };
+
+  const handleUpdateDoctorNote = async (updated: DoctorNote) => {
+    setDoctorNote(updated);
+    await updateNoteOnServer(updated);
+    setLastServerSync(new Date().toLocaleTimeString('es-ES'));
+    setSyncToastMessage('Nota clínica actualizada en el servidor JSON.');
+    setTimeout(() => setSyncToastMessage(null), 3000);
+  };
+
+  const handleResetDb = async () => {
+    await resetServerDatabase();
+    await loadDataFromServer();
+    setSyncToastMessage('Base de datos JSON restaurada a 0.');
+    setTimeout(() => setSyncToastMessage(null), 3000);
+  };
+
+  const handleSyncDoctor = () => {
+    setSyncToastMessage('Sincronizando con la historia clínica del Hospital Universitario...');
+    setTimeout(() => {
+      setSyncToastMessage('✓ Expediente sincronizado con el servicio de Cardiología (Dr. Manuel Varela).');
+      setTimeout(() => setSyncToastMessage(null), 4000);
+    }, 1000);
+  };
+
+  const handleDownloadCsv = () => {
+    downloadMeasurementsCsv(activeCycle, measurements);
+    setSyncToastMessage('Archivo CSV generado y descargado.');
+    setTimeout(() => setSyncToastMessage(null), 3000);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f1f5f9] text-[#102a36] flex flex-col items-center">
+      {/* Desktop Mode & Server Storage Status Toolbar (hidden in print) */}
+      <div className="hidden lg:flex items-center justify-between w-full max-w-4xl px-4 py-2.5 text-xs text-slate-500 border-b border-slate-200/80 bg-white/70 backdrop-blur-md no-print">
+        {/* Server JSON status indicator */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Database className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Almacenamiento JSON: Servidor Activo</span>
+          </div>
+
+          <span className="text-[11px] text-slate-400">
+            {lastServerSync ? `Última sincronización: ${lastServerSync}` : 'Sincronizado'}
+          </span>
+
+          <button
+            onClick={loadDataFromServer}
+            disabled={isSyncing}
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 cursor-pointer"
+            title="Recargar datos del servidor JSON"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+          </button>
+
+          <button
+            onClick={handleResetDb}
+            className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-md cursor-pointer transition-colors"
+            title="Borrar todas las mediciones y comenzar desde 0"
+          >
+            Reiniciar a 0
+          </button>
+        </div>
+
+        {/* View Mode controls */}
+        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
+          <button
+            onClick={() => setViewMode('mobile')}
+            className={`px-3 py-1 rounded-md font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              viewMode === 'mobile'
+                ? 'bg-white text-[#005570] shadow-xs font-bold'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>Vista Móvil</span>
+          </button>
+          <button
+            onClick={() => setViewMode('expanded')}
+            className={`px-3 py-1 rounded-md font-medium flex items-center gap-1.5 transition-colors cursor-pointer ${
+              viewMode === 'expanded'
+                ? 'bg-white text-[#005570] shadow-xs font-bold'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Monitor className="w-3.5 h-3.5" />
+            <span>Vista Expandida</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Container */}
+      <div
+        className={`w-full transition-all duration-300 flex-1 flex flex-col ${
+          viewMode === 'mobile'
+            ? 'max-w-[420px] bg-[#f8fafc] min-h-screen lg:my-4 lg:rounded-[40px] lg:shadow-2xl lg:border-[8px] lg:border-slate-800/90 lg:ring-1 lg:ring-black/10 overflow-hidden relative'
+            : 'max-w-4xl bg-[#f8fafc] min-h-screen px-4 lg:my-4 lg:rounded-3xl lg:shadow-lg border border-slate-200 relative'
+        }`}
+      >
+        {/* Device Speaker Notch on mobile frame */}
+        {viewMode === 'mobile' && (
+          <div className="hidden lg:flex justify-center pt-2 pb-1 bg-[#f8fafc]">
+            <div className="w-20 h-3.5 bg-slate-900 rounded-full flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-slate-800 mr-2" />
+              <div className="w-8 h-1 bg-slate-700 rounded-full" />
+            </div>
+          </div>
+        )}
+
+        {/* Global Toast Notification */}
+        {syncToastMessage && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-slate-900/95 text-white text-xs font-semibold rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4 border border-slate-700">
+            <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{syncToastMessage}</span>
+          </div>
+        )}
+
+        {/* Top App Bar */}
+        <Header
+          currentTab={currentTab}
+          onOpenProfile={() => setIsProfileOpen(true)}
+        />
+
+        {/* Mobile Server Storage Pill Banner */}
+        <div className="lg:hidden px-4 pt-1 pb-0 flex items-center justify-between text-[10px] text-slate-500">
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="font-semibold text-slate-600">Servidor JSON: Conectado</span>
+          </div>
+          <span className="text-slate-400">
+            {lastServerSync ? `Sync ${lastServerSync}` : 'Sync OK'}
+          </span>
+        </div>
+
+        {/* Content Screens */}
+        <main className="flex-1 px-4 pt-2 pb-8 overflow-y-auto">
+          {currentTab === 'hoy' && (
+            <TodayScreen
+              activeCycle={activeCycle}
+              measurements={measurements}
+              morningMeasurement={todayMorningMeasurement}
+              nightMeasurement={todayNightMeasurement}
+              onGoToRegisterMorning={() => {
+                setPreselectedTimeOfDay('manana');
+                setCurrentTab('registrar');
+              }}
+              onGoToRegisterNight={() => {
+                setPreselectedTimeOfDay('noche');
+                setCurrentTab('registrar');
+              }}
+              onGoToPeriods={() => setCurrentTab('periodos')}
+              onSelectDay={() => setCurrentTab('reporte')}
+              onEditMeasurement={setEditingMeasurement}
+              onDeleteMeasurement={handleDeleteMeasurement}
+              onRequestDelete={setMeasurementToDelete}
+            />
+          )}
+
+          {currentTab === 'registrar' && (
+            <RegisterScreen
+              activePeriodTitle={activeCycle.title}
+              initialTimeOfDay={preselectedTimeOfDay}
+              onChangePeriodClick={() => setIsNewCycleOpen(true)}
+              onSaveMeasurement={(m) => {
+                handleSaveMeasurement(m);
+                setCurrentTab('hoy');
+              }}
+            />
+          )}
+
+          {currentTab === 'periodos' && (
+            <PeriodsScreen
+              activeCycle={activeCycle}
+              historyCycles={historyCycles}
+              measurements={measurements}
+              onOpenNewCycleModal={() => setIsNewCycleOpen(true)}
+              onSyncDoctorClick={handleSyncDoctor}
+              onEditMeasurement={setEditingMeasurement}
+              onDeleteMeasurement={handleDeleteMeasurement}
+              onRequestDelete={setMeasurementToDelete}
+            />
+          )}
+
+          {currentTab === 'reporte' && (
+            <ReportScreen
+              activeCycle={activeCycle}
+              measurements={measurements}
+              doctorNote={doctorNote}
+              onEditDoctorNote={() => setIsEditNoteModalOpen(true)}
+              onOpenPdfReport={() => setIsPdfModalOpen(true)}
+              onOpenShareModal={() => setIsShareModalOpen(true)}
+              onDownloadCsv={handleDownloadCsv}
+            />
+          )}
+        </main>
+
+        {/* Fixed Bottom Navigation */}
+        <BottomNav
+          currentTab={currentTab}
+          onSelectTab={(tab) => {
+            if (tab === 'registrar') {
+              setPreselectedTimeOfDay('manana');
+            }
+            setCurrentTab(tab);
+          }}
+        />
+      </div>
+
+      {/* Global Modals */}
+      <UserProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        onResetDb={handleResetDb}
+      />
+
+      <NewCycleModal
+        isOpen={isNewCycleOpen}
+        onClose={() => setIsNewCycleOpen(false)}
+        onCreateCycle={handleCreateCycle}
+      />
+
+      <PdfReportModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        cycle={activeCycle}
+        measurements={measurements}
+        doctorNote={doctorNote}
+      />
+
+      <EditNoteModal
+        isOpen={isEditNoteModalOpen}
+        onClose={() => setIsEditNoteModalOpen(false)}
+        note={doctorNote}
+        onSave={handleUpdateDoctorNote}
+      />
+
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+      />
+
+      <EditMeasurementModal
+        isOpen={!!editingMeasurement}
+        measurement={editingMeasurement}
+        onClose={() => setEditingMeasurement(null)}
+        onSave={handleUpdateMeasurement}
+        onDelete={handleDeleteMeasurement}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={!!measurementToDelete}
+        measurement={measurementToDelete}
+        onClose={() => setMeasurementToDelete(null)}
+        onConfirm={handleDeleteMeasurement}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,6 @@
+{
+  "name": "TensioCare - Control Clínico de Tensión Arterial",
+  "description": "Aplicación clínica de monitorización y registro ambulatorio de presión arterial (AMPA) según criterios ESH/ESC con análisis, períodos y reportes médicos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

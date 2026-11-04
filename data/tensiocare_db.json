@@ -1,0 +1,50 @@
+{
+  "cycles": [
+    {
+      "id": "ciclo-actual",
+      "title": "Control Semanal AMPA (7 Días)",
+      "dateRange": "Semana Actual",
+      "startDate": "2026-11-04",
+      "endDate": "2026-11-11",
+      "status": "en_curso",
+      "statusLabel": "En curso",
+      "dayProgress": "Día 1 de 7",
+      "progressPercent": 0,
+      "completedTakes": 0,
+      "totalTakes": 14,
+      "morningAvg": {
+        "tas": 0,
+        "tad": 0,
+        "label": "Sin registros"
+      },
+      "nightAvg": {
+        "tas": 0,
+        "tad": 0,
+        "label": "Sin registros"
+      },
+      "overallAvg": {
+        "tas": 0,
+        "tad": 0
+      },
+      "classificationTag": "Iniciando"
+    }
+  ],
+  "measurements": [],
+  "doctorNote": {
+    "doctorName": "Dr. Manuel Varela",
+    "specialty": "Cardiología",
+    "date": "Pendiente de revisión",
+    "content": "Pauta de inicio de automonitorización de presión arterial (AMPA). Registrar dos tomas diarias (matutina en ayunas y vespertina antes de cenar) durante 7 días consecutivos para valoración clínica.",
+    "adherence": "Protocolo recién iniciado: 0 de 14 tomas"
+  },
+  "userProfile": {
+    "name": "Carlos Méndez",
+    "age": 58,
+    "dni": "***4582-K",
+    "doctor": "Dr. Manuel Varela",
+    "clinic": "Hospital Universitario Clínico - Consulta Externa Cardiología",
+    "currentMedication": "Enalapril 10mg (1 comprimido matutino en ayunas)",
+    "protocol": "AMPA 7 Días (ESH/ESC 2023)"
+  },
+  "lastModified": "2026-11-04T18:03:17.630Z"
+}
