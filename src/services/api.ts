@@ -25,22 +25,37 @@ export async function fetchServerData(): Promise<ServerDataResponse> {
 
     const data = await res.json();
     let cycles = data.cycles && data.cycles.length > 0 ? data.cycles : initialCycles;
-    let measurements: Measurement[] = data.measurements || [];
+    let serverMeasurements: Measurement[] = data.measurements || [];
     let doctorNote = data.doctorNote || initialDoctorNote;
     let userProfile = data.userProfile || userProfileData;
 
-    // Safety Recovery: If local device vault has saved measurements that server doesn't have yet (e.g. Netlify /tmp restarted), restore them!
-    if (localVault && localVault.measurements && localVault.measurements.length > measurements.length) {
-      measurements = localVault.measurements;
-      if (localVault.cycles) cycles = localVault.cycles;
-      if (localVault.userProfile) userProfile = localVault.userProfile;
-      if (localVault.doctorNote) doctorNote = localVault.doctorNote;
+    // Deduplicated union merge between server measurements and localVault measurements
+    const mergedMap = new Map<string, Measurement>();
+    for (const m of serverMeasurements) {
+      if (m && m.id) mergedMap.set(m.id, m);
+    }
 
-      // Resync restored data to server in background
-      for (const m of measurements) {
-        saveMeasurementToServer(m).catch(() => {});
+    if (localVault && localVault.measurements && localVault.measurements.length > 0) {
+      for (const m of localVault.measurements) {
+        if (m && m.id && !mergedMap.has(m.id)) {
+          mergedMap.set(m.id, m);
+          // Resync missing local measurement to server in background
+          saveMeasurementToServer(m).catch(() => {});
+        }
+      }
+      if (localVault.userProfile && localVault.userProfile.name) {
+        userProfile = localVault.userProfile;
+      }
+      if (localVault.doctorNote && localVault.doctorNote.doctorName) {
+        doctorNote = localVault.doctorNote;
       }
     }
+
+    const measurements = Array.from(mergedMap.values()).sort((a, b) => {
+      const dateTimeA = `${a.date} ${a.time}`;
+      const dateTimeB = `${b.date} ${b.time}`;
+      return dateTimeB.localeCompare(dateTimeA);
+    });
 
     // Always mirror resolved state into local persistent vault
     saveVaultToLocalStorage({ cycles, measurements, doctorNote, userProfile });

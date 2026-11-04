@@ -6,6 +6,7 @@ import {
 import confetti from 'canvas-confetti';
 import { Measurement, TimeOfDay } from '../../types';
 import { classifyBloodPressure } from '../../utils/eshClassifier';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 interface RegisterScreenProps {
   onSaveMeasurement: (measurement: Omit<Measurement, 'id'>) => void;
@@ -51,7 +52,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const handleSave = () => {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const dateStr = now.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(now);
 
     onSaveMeasurement({
       periodId: 'ciclo-actual',

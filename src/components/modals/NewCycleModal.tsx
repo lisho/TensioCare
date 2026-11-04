@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, PlusCircle, CheckCircle2 } from 'lucide-react';
 import { Cycle } from '../../types';
+import { getLocalDateString } from '../../utils/dateUtils';
 
 interface NewCycleModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ export const NewCycleModal: React.FC<NewCycleModalProps> = ({
   const [title, setTitle] = useState('Control Semanal Noviembre');
   const [protocol, setProtocol] = useState<'7_dias' | '14_dias'>('7_dias');
   const [startDate, setStartDate] = useState(
-    new Date().toISOString().split('T')[0]
+    getLocalDateString()
   );
 
   if (!isOpen) return null;
@@ -34,8 +35,8 @@ export const NewCycleModal: React.FC<NewCycleModalProps> = ({
       id: `cycle-${Date.now()}`,
       title,
       dateRange: rangeStr,
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0],
+      startDate: getLocalDateString(start),
+      endDate: getLocalDateString(end),
       status: 'en_curso',
       statusLabel: 'En curso',
       dayProgress: `Día 1 de ${protocol === '7_dias' ? 7 : 14}`,

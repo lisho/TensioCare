@@ -21,6 +21,7 @@ import { ResetDbConfirmModal } from './components/modals/ResetDbConfirmModal';
 import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
 import { downloadMeasurementsCsv } from './utils/csvExport';
 import { generatePlanPdfReport } from './utils/pdfExport';
+import { getLocalDateString } from './utils/dateUtils';
 import { exportDatabaseBackup, parseBackupFile, saveVaultToLocalStorage } from './services/dataVault';
 import { 
   fetchServerData, 
@@ -91,12 +92,17 @@ export default function App() {
     loadDataFromServer();
   }, []);
 
+  // Sync state changes to device localStorage vault automatically
+  useEffect(() => {
+    saveVaultToLocalStorage({ cycles, measurements, doctorNote, userProfile });
+  }, [cycles, measurements, doctorNote, userProfile]);
+
   // Active cycle
   const activeCycle = cycles.find((c) => c.id === activeCycleId) || cycles[0];
   const historyCycles = cycles.filter((c) => c.id !== activeCycleId);
 
-  // Today's measurements (real dynamic date matching current day)
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Today's measurements (real dynamic date matching local current day)
+  const todayStr = getLocalDateString();
   const todayMorningMeasurement = measurements.find(
     (m) => m.date === todayStr && m.timeOfDay === 'manana'
   );

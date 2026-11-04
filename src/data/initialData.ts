@@ -1,4 +1,5 @@
 import { Cycle, DoctorNote, Measurement, UserProfile } from '../types';
+import { getLocalDateString } from '../utils/dateUtils';
 
 export const initialMeasurements: Measurement[] = [];
 
@@ -7,8 +8,8 @@ export const initialCycles: Cycle[] = [
     id: 'ciclo-actual',
     title: 'Control Semanal AMPA (7 Días)',
     dateRange: 'Semana Actual',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+    startDate: getLocalDateString(),
+    endDate: getLocalDateString(new Date(Date.now() + 7 * 86400000)),
     status: 'en_curso',
     statusLabel: 'En curso',
     dayProgress: 'Día 1 de 7',
