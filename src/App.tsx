@@ -18,8 +18,10 @@ import { ShareModal } from './components/modals/ShareModal';
 import { EditMeasurementModal } from './components/modals/EditMeasurementModal';
 import { ConfirmDeleteModal } from './components/modals/ConfirmDeleteModal';
 import { ResetDbConfirmModal } from './components/modals/ResetDbConfirmModal';
+import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
 import { downloadMeasurementsCsv } from './utils/csvExport';
 import { generatePlanPdfReport } from './utils/pdfExport';
+import { exportDatabaseBackup, parseBackupFile, saveVaultToLocalStorage } from './services/dataVault';
 import { 
   fetchServerData, 
   saveMeasurementToServer, 
@@ -247,6 +249,55 @@ export default function App() {
     setTimeout(() => setSyncToastMessage(null), 3000);
   };
 
+  const handleExportBackup = () => {
+    exportDatabaseBackup({
+      cycles,
+      measurements,
+      doctorNote,
+      userProfile,
+    });
+    setSyncToastMessage('✓ Copia de seguridad JSON generada y descargada.');
+    setTimeout(() => setSyncToastMessage(null), 3500);
+  };
+
+  const handleRestoreBackup = async (jsonContent: string) => {
+    const parsed = parseBackupFile(jsonContent);
+    if (!parsed.success || !parsed.data) {
+      setSyncToastMessage('Error al leer el archivo de copia de seguridad.');
+      setTimeout(() => setSyncToastMessage(null), 3500);
+      return;
+    }
+
+    const { cycles: newCycles, measurements: newMeasurements, doctorNote: newNote, userProfile: newProfile } = parsed.data;
+
+    if (newCycles) setCycles(newCycles);
+    if (newMeasurements) setMeasurements(newMeasurements);
+    if (newNote) setDoctorNote(newNote);
+    if (newProfile) setUserProfile(newProfile);
+
+    // Persist restored vault locally
+    saveVaultToLocalStorage({
+      cycles: newCycles || cycles,
+      measurements: newMeasurements || measurements,
+      doctorNote: newNote || doctorNote,
+      userProfile: newProfile || userProfile,
+    });
+
+    // Sync restored measurements to server
+    if (newMeasurements && newMeasurements.length > 0) {
+      setSyncToastMessage('Sincronizando copia restaurada con el servidor...');
+      for (const m of newMeasurements) {
+        await saveMeasurementToServer(m);
+      }
+    }
+    if (newProfile) await updateUserProfileOnServer(newProfile);
+    if (newNote) await updateNoteOnServer(newNote);
+
+    setLastServerSync(new Date().toLocaleTimeString('es-ES'));
+    setSyncToastMessage('✓ Copia de seguridad restaurada con éxito.');
+    setTimeout(() => setSyncToastMessage(null), 4000);
+  };
+
   const handleDownloadPlanPdf = (targetCycle?: Cycle) => {
     const cycle = targetCycle || activeCycle;
     const cycleMeasurements = cycle.id === activeCycle.id
@@ -344,6 +395,9 @@ export default function App() {
           onOpenProfile={() => setIsProfileOpen(true)}
         />
 
+        {/* PWA Install Banner (mounts conditionally if installable or on iOS Safari) */}
+        <PWAInstallBanner />
+
         {/* Mobile Server Storage Pill Banner */}
         <div className="lg:hidden px-4 pt-1 pb-0 flex items-center justify-between text-[10px] text-slate-500">
           <div className="flex items-center gap-1.5">
@@ -439,6 +493,8 @@ export default function App() {
           onClose={() => setIsProfileOpen(false)}
           userProfile={userProfile}
           onSaveProfile={handleUpdateUserProfile}
+          onExportBackup={handleExportBackup}
+          onRestoreBackup={handleRestoreBackup}
           onRequestResetDb={() => setIsResetDbModalOpen(true)}
         />
       )}

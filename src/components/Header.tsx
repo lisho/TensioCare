@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Heart, User, ShieldCheck, Stethoscope, Pill, Calendar, Clock, X, 
-  Edit3, Check, AlertTriangle, ChevronDown, ChevronUp, Lock, Save
+  Edit3, Check, AlertTriangle, ChevronDown, ChevronUp, Lock, Save,
+  Download, Upload
 } from 'lucide-react';
 import { TabType, UserProfile } from '../types';
 import { initialUserProfile } from '../data/initialData';
@@ -77,6 +78,8 @@ interface UserProfileModalProps {
   onClose: () => void;
   userProfile?: UserProfile;
   onSaveProfile?: (updated: UserProfile) => Promise<void> | void;
+  onExportBackup?: () => void;
+  onRestoreBackup?: (jsonContent: string) => void;
   onRequestResetDb?: () => void;
 }
 
@@ -85,6 +88,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   userProfile,
   onSaveProfile,
+  onExportBackup,
+  onRestoreBackup,
   onRequestResetDb,
 }) => {
   const current = userProfile || initialUserProfile;
@@ -359,8 +364,51 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </form>
         )}
 
+        {/* Backup and Data Protection Section */}
+        <div className="mt-4 pt-3 border-t border-slate-100">
+          <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+            PROTECCIÓN DE DATOS Y RESPALDO
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (onExportBackup) onExportBackup();
+              }}
+              className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-[#005570] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              title="Descargar copia de seguridad en JSON"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Guardar Copia</span>
+            </button>
+
+            <label className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-[#005570] rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer text-center">
+              <Upload className="w-3.5 h-3.5" />
+              <span>Restaurar Copia</span>
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onRestoreBackup) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      if (evt.target?.result) {
+                        onRestoreBackup(evt.target.result as string);
+                        onClose();
+                      }
+                    };
+                    reader.readAsText(file);
+                  }
+                }}
+              />
+            </label>
+          </div>
+        </div>
+
         {/* Collapsible Advanced / Danger Zone (Well protected, requires expansion + explicit confirmation) */}
-        <div className="mt-5 pt-3 border-t border-slate-100">
+        <div className="mt-4 pt-3 border-t border-slate-100">
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
