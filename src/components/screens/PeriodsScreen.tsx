@@ -12,11 +12,11 @@ interface PeriodsScreenProps {
   historyCycles: Cycle[];
   measurements: Measurement[];
   onOpenNewCycleModal: () => void;
-  onSyncDoctorClick: () => void;
   onEditMeasurement: (measurement: Measurement) => void;
   onDeleteMeasurement: (id: string) => void;
   onRequestDelete?: (measurement: Measurement) => void;
   onDownloadPlanPdf?: (cycle: Cycle) => void;
+  onGoToRegisterPastDate?: () => void;
 }
 
 export const PeriodsScreen: React.FC<PeriodsScreenProps> = ({
@@ -24,11 +24,11 @@ export const PeriodsScreen: React.FC<PeriodsScreenProps> = ({
   historyCycles,
   measurements,
   onOpenNewCycleModal,
-  onSyncDoctorClick,
   onEditMeasurement,
   onDeleteMeasurement,
   onRequestDelete,
   onDownloadPlanPdf,
+  onGoToRegisterPastDate,
 }) => {
   const [isBreakdownOpen, setIsBreakdownOpen] = useState<boolean>(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
@@ -78,13 +78,26 @@ export const PeriodsScreen: React.FC<PeriodsScreenProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenNewCycleModal}
-          className="px-3.5 py-2 rounded-xl bg-[#004e63] hover:bg-[#003c4d] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
-        >
-          <Plus className="w-4 h-4 stroke-[2.5]" />
-          <span>Nuevo Ciclo</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {onGoToRegisterPastDate && (
+            <button
+              onClick={onGoToRegisterPastDate}
+              className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-[#005570] border border-blue-200/80 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-transform active:scale-95 cursor-pointer"
+              title="Añadir toma con fecha pasada modificando el día a mano"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Añadir datos antiguos</span>
+              <span className="sm:hidden">Toma antigua</span>
+            </button>
+          )}
+          <button
+            onClick={onOpenNewCycleModal}
+            className="px-3.5 py-2 rounded-xl bg-[#004e63] hover:bg-[#003c4d] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Nuevo Ciclo</span>
+          </button>
+        </div>
       </div>
 
       {/* Protocolo Clínico Activo Notice */}
@@ -443,30 +456,6 @@ export const PeriodsScreen: React.FC<PeriodsScreenProps> = ({
             </p>
           </div>
         )}
-      </div>
-
-      {/* Doctor Sync Card */}
-      <div className="bg-[#e9f2fa] rounded-2xl p-4 border border-blue-100 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#004e63] text-white flex items-center justify-center shrink-0 shadow-2xs">
-            <Send className="w-5 h-5 -rotate-45 ml-0.5" />
-          </div>
-          <div>
-            <h4 className="font-bold text-xs text-slate-900 leading-tight">
-              ¿Próxima consulta médica?
-            </h4>
-            <p className="text-[11px] text-slate-600 mt-0.5">
-              Sincroniza con el expediente ...
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={onSyncDoctorClick}
-          className="px-4 py-2 bg-[#004e63] hover:bg-[#003c4d] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
-        >
-          Enviar
-        </button>
       </div>
     </div>
   );

@@ -41,10 +41,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900 leading-tight">
-              Compartir Auditoría Clínica
+              Compartir Informe Clínico
             </h3>
             <p className="text-xs text-slate-500">
-              Con tu cardiólogo o cuidador
+              Enviar datos para revisión médica o personal
             </p>
           </div>
         </div>
@@ -52,13 +52,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
         <div className="space-y-4 text-xs">
           <div>
             <label className="block font-bold text-slate-700 mb-1">
-              Enlace Seguro de Lectura Médica
+              Enlace de Lectura
             </label>
             <div className="flex items-center gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl">
               <input
                 type="text"
                 readOnly
-                value={`https://tensiocare.app/dossier/cmendez-2024`}
+                value={shareUrl}
                 className="w-full bg-transparent text-slate-600 font-mono text-[11px] outline-none"
               />
               <button
@@ -73,15 +73,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
 
           <div className="space-y-2 pt-1">
             <a
-              href={`mailto:consulta.cardiologia@hospital.es?subject=Informe TensioCare AMPA - ${encodeURIComponent(userProfileData.name)}&body=Adjunto informe clínico de automonitorización de presión arterial de los últimos 7 días.`}
+              href={`mailto:?subject=Informe TensioCare AMPA - ${encodeURIComponent(userProfileData.name)}&body=Adjunto informe clínico de automonitorización de presión arterial de los últimos 7 días: ${encodeURIComponent(shareUrl)}`}
               className="w-full py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-2 font-medium"
             >
               <Mail className="w-4 h-4 text-[#005570]" />
-              <span>Enviar por Correo a Cardiología</span>
+              <span>Enviar por Correo Electrónico</span>
             </a>
 
             <a
-              href={`https://api.whatsapp.com/send?text=${encodeURIComponent('Hola Dr. Varela, le comparto mi registro de tensión de los últimos 7 días con TensioCare: https://tensiocare.app/dossier/cmendez-2024')}`}
+              href={`https://api.whatsapp.com/send?text=${encodeURIComponent('Hola, comparto mi registro de tensión arterial con TensioCare: ' + shareUrl)}`}
               target="_blank"
               rel="noreferrer"
               className="w-full py-2.5 px-3 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-800 flex items-center justify-center gap-2 font-medium"

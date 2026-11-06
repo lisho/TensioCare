@@ -39,3 +39,28 @@ export function formatSpanishDate(dateStr?: string): string {
 
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
+
+/**
+ * Returns YYYY-MM-DD formatted date string for yesterday.
+ */
+export function getYesterdayDateString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return getLocalDateString(d);
+}
+
+/**
+ * Returns user-friendly date label distinguishing Hoy, Ayer, or Spanish formatted date.
+ */
+export function formatDateWithContext(dateStr?: string): string {
+  if (!dateStr) return 'Hoy';
+  const today = getLocalDateString();
+  const yesterday = getYesterdayDateString();
+  if (dateStr === today) {
+    return `Hoy (${formatSpanishDate(dateStr)})`;
+  }
+  if (dateStr === yesterday) {
+    return `Ayer (${formatSpanishDate(dateStr)})`;
+  }
+  return formatSpanishDate(dateStr);
+}

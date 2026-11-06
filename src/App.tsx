@@ -13,7 +13,6 @@ import { PeriodsScreen } from './components/screens/PeriodsScreen';
 import { ReportScreen } from './components/screens/ReportScreen';
 import { PdfReportModal } from './components/modals/PdfReportModal';
 import { NewCycleModal } from './components/modals/NewCycleModal';
-import { EditNoteModal } from './components/modals/EditNoteModal';
 import { ShareModal } from './components/modals/ShareModal';
 import { EditMeasurementModal } from './components/modals/EditMeasurementModal';
 import { ConfirmDeleteModal } from './components/modals/ConfirmDeleteModal';
@@ -47,6 +46,7 @@ export default function App() {
   const [doctorNote, setDoctorNote] = useState<DoctorNote>(() => getVaultFromLocalStorage()?.doctorNote || initialDoctorNote);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => getVaultFromLocalStorage()?.userProfile || initialUserProfile);
   const [preselectedTimeOfDay, setPreselectedTimeOfDay] = useState<TimeOfDay>('manana');
+  const [startWithCustomDateOpen, setStartWithCustomDateOpen] = useState<boolean>(false);
   
   // Storage and Sync state
   const [storageSource, setStorageSource] = useState<'firestore' | 'server_json' | 'local_fallback'>('firestore');
@@ -59,7 +59,6 @@ export default function App() {
   const [isNewCycleOpen, setIsNewCycleOpen] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isEditNoteModalOpen, setIsEditNoteModalOpen] = useState(false);
   const [editingMeasurement, setEditingMeasurement] = useState<Measurement | null>(null);
   const [measurementToDelete, setMeasurementToDelete] = useState<Measurement | null>(null);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
@@ -240,14 +239,6 @@ export default function App() {
     setTimeout(() => setSyncToastMessage(null), 3000);
   };
 
-  const handleUpdateDoctorNote = async (updated: DoctorNote) => {
-    setDoctorNote(updated);
-    await updateNoteOnServer(updated);
-    setStorageSource('firestore');
-    setLastServerSync(new Date().toLocaleTimeString('es-ES'));
-    setSyncToastMessage('✓ Nota clínica actualizada en la nube de Firebase.');
-    setTimeout(() => setSyncToastMessage(null), 3000);
-  };
 
   const handleUpdateUserProfile = async (updated: UserProfile) => {
     setUserProfile(updated);
@@ -270,13 +261,6 @@ export default function App() {
     setTimeout(() => setSyncToastMessage(null), 3000);
   };
 
-  const handleSyncDoctor = () => {
-    setSyncToastMessage('Sincronizando con la historia clínica del Hospital Universitario...');
-    setTimeout(() => {
-      setSyncToastMessage('✓ Expediente sincronizado con el servicio de Cardiología (Dr. Manuel Varela).');
-      setTimeout(() => setSyncToastMessage(null), 4000);
-    }, 1000);
-  };
 
   const handleDownloadCsv = () => {
     downloadMeasurementsCsv(activeCycle, measurements);
@@ -464,6 +448,11 @@ export default function App() {
               }}
               onGoToRegisterNight={() => {
                 setPreselectedTimeOfDay('noche');
+                setStartWithCustomDateOpen(false);
+                setCurrentTab('registrar');
+              }}
+              onGoToRegisterPastDate={() => {
+                setStartWithCustomDateOpen(true);
                 setCurrentTab('registrar');
               }}
               onGoToPeriods={() => setCurrentTab('periodos')}
@@ -479,9 +468,11 @@ export default function App() {
             <RegisterScreen
               activePeriodTitle={activeCycle.title}
               initialTimeOfDay={preselectedTimeOfDay}
+              startWithCustomDateOpen={startWithCustomDateOpen}
               onChangePeriodClick={() => setIsNewCycleOpen(true)}
               onSaveMeasurement={(m) => {
                 handleSaveMeasurement(m);
+                setStartWithCustomDateOpen(false);
                 setCurrentTab('hoy');
               }}
             />
@@ -493,7 +484,10 @@ export default function App() {
               historyCycles={historyCycles}
               measurements={measurements}
               onOpenNewCycleModal={() => setIsNewCycleOpen(true)}
-              onSyncDoctorClick={handleSyncDoctor}
+              onGoToRegisterPastDate={() => {
+                setStartWithCustomDateOpen(true);
+                setCurrentTab('registrar');
+              }}
               onEditMeasurement={setEditingMeasurement}
               onDeleteMeasurement={handleDeleteMeasurement}
               onRequestDelete={setMeasurementToDelete}
@@ -505,8 +499,6 @@ export default function App() {
             <ReportScreen
               activeCycle={activeCycle}
               measurements={measurements}
-              doctorNote={doctorNote}
-              onEditDoctorNote={() => setIsEditNoteModalOpen(true)}
               onOpenPdfReport={() => setIsPdfModalOpen(true)}
               onDownloadPdf={() => handleDownloadPlanPdf(activeCycle)}
               onOpenShareModal={() => setIsShareModalOpen(true)}
@@ -521,6 +513,8 @@ export default function App() {
           onSelectTab={(tab) => {
             if (tab === 'registrar') {
               setPreselectedTimeOfDay('manana');
+            } else {
+              setStartWithCustomDateOpen(false);
             }
             setCurrentTab(tab);
           }}
@@ -567,14 +561,6 @@ export default function App() {
         />
       )}
 
-      {isEditNoteModalOpen && (
-        <EditNoteModal
-          isOpen={isEditNoteModalOpen}
-          onClose={() => setIsEditNoteModalOpen(false)}
-          note={doctorNote}
-          onSave={handleUpdateDoctorNote}
-        />
-      )}
 
       {isShareModalOpen && (
         <ShareModal

@@ -207,14 +207,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         {/* View Mode */}
         {!isEditing ? (
           <div className="space-y-3.5 text-xs text-slate-700 divide-y divide-slate-100">
-            <div className="pt-1 flex items-start gap-2.5">
-              <Stethoscope className="w-4 h-4 text-[#005570] shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-slate-900">Cardiólogo Responsable</p>
-                <p className="text-slate-700">{formData.doctor}</p>
-                <p className="text-[11px] text-slate-400">{formData.clinic}</p>
+            {formData.doctor && (
+              <div className="pt-1 flex items-start gap-2.5">
+                <Stethoscope className="w-4 h-4 text-[#005570] shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-slate-900">Médico de Referencia</p>
+                  <p className="text-slate-700">{formData.doctor}</p>
+                  {formData.clinic && <p className="text-[11px] text-slate-400">{formData.clinic}</p>}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="pt-3 flex items-start gap-2.5">
               <Pill className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -291,26 +293,26 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                Médico / Cardiólogo Asignado
+                Médico de Referencia (Opcional)
               </label>
               <input
                 type="text"
                 value={formData.doctor}
                 onChange={(e) => handleInputChange('doctor', e.target.value)}
-                placeholder="Dr. ..."
+                placeholder="Nombre del médico (opcional)"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#005570]"
               />
             </div>
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                Centro Médico u Hospital
+                Centro Médico o Consulta (Opcional)
               </label>
               <input
                 type="text"
                 value={formData.clinic}
                 onChange={(e) => handleInputChange('clinic', e.target.value)}
-                placeholder="Hospital / Consulta..."
+                placeholder="Hospital / Centro de Salud (opcional)"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#005570]"
               />
             </div>

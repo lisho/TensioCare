@@ -13,6 +13,7 @@ interface TodayScreenProps {
   nightMeasurement?: Measurement;
   onGoToRegisterMorning: () => void;
   onGoToRegisterNight: () => void;
+  onGoToRegisterPastDate?: () => void;
   onGoToPeriods: () => void;
   onSelectDay: (day: string) => void;
   onEditMeasurement: (measurement: Measurement) => void;
@@ -28,6 +29,7 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
   nightMeasurement,
   onGoToRegisterMorning,
   onGoToRegisterNight,
+  onGoToRegisterPastDate,
   onGoToPeriods,
   onEditMeasurement,
   onDeleteMeasurement,
@@ -363,6 +365,32 @@ export const TodayScreen: React.FC<TodayScreenProps> = ({
           </>
         )}
       </div>
+
+      {/* Acceso rápido para añadir datos antiguos / tomas pasadas */}
+      {onGoToRegisterPastDate && (
+        <div className="bg-[#f0f7fd] rounded-2xl p-3 border border-sky-100 flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-white text-[#005570] flex items-center justify-center shadow-2xs">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-900 block leading-tight">
+                ¿Olvidaste registrar una toma anterior?
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Añade mediciones pasadas modificando el día a mano
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onGoToRegisterPastDate}
+            className="px-3 py-1.5 rounded-xl bg-[#005570] hover:bg-[#004359] text-white text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs shrink-0"
+          >
+            <span>Añadir datos antiguos</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Card 3: Tendencia del Periodo (Estabilidad de 7 Días) */}
       <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs">

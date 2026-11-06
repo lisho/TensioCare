@@ -36,19 +36,19 @@ export const initialCycles: Cycle[] = [
 ];
 
 export const initialDoctorNote: DoctorNote = {
-  doctorName: 'Dr. Manuel Varela',
-  specialty: 'Cardiología',
-  date: 'Pendiente de revisión',
-  content: 'Pauta de inicio de automonitorización de presión arterial (AMPA). Registrar dos tomas diarias (matutina en ayunas y vespertina antes de cenar) durante 7 días consecutivos para valoración clínica.',
-  adherence: 'Protocolo recién iniciado: 0 de 14 tomas',
+  doctorName: '',
+  specialty: '',
+  date: '',
+  content: '',
+  adherence: '',
 };
 
 export const initialUserProfile: UserProfile = {
   name: 'Carlos Méndez',
   age: 58,
   dni: '***4582-K',
-  doctor: 'Dr. Manuel Varela',
-  clinic: 'Hospital Universitario Clínico - Consulta Externa Cardiología',
+  doctor: '',
+  clinic: '',
   currentMedication: 'Enalapril 10mg (1 comprimido matutino en ayunas)',
   protocol: 'AMPA 7 Días (ESH/ESC 2023)',
 };

@@ -67,24 +67,24 @@ export function generatePlanPdfReport(
   doc.setFontSize(8);
   doc.text('DATOS DEL PACIENTE', margin + 4, y + 5);
   doc.text('PLAN / PROTOCOLO', margin + contentWidth * 0.36, y + 5);
-  doc.text('MÉDICO RESPONSABLE', margin + contentWidth * 0.70, y + 5);
+  doc.text('DESTINO / VALORACIÓN', margin + contentWidth * 0.70, y + 5);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   // Column 1: Patient
   doc.text(`Nombre: ${profile.name}`, margin + 4, y + 10);
   doc.text(`Edad: ${profile.age} años  ·  DNI: ${profile.dni}`, margin + 4, y + 15);
-  doc.text(`Medicación: ${profile.currentMedication}`, margin + 4, y + 20);
+  doc.text(`Medicación: ${profile.currentMedication || 'Sin registrar'}`, margin + 4, y + 20);
 
   // Column 2: Plan
   doc.text(`Plan: ${cycle.title}`, margin + contentWidth * 0.36, y + 10);
   doc.text(`Período: ${cycle.dateRange}`, margin + contentWidth * 0.36, y + 15);
   doc.text(`Progreso: ${cycle.completedTakes} de ${cycle.totalTakes} tomas (${cycle.progressPercent}%)`, margin + contentWidth * 0.36, y + 20);
 
-  // Column 3: Doctor
-  doc.text(doctorNote?.doctorName || profile.doctor, margin + contentWidth * 0.70, y + 10);
-  doc.text(doctorNote?.specialty || 'Cardiología', margin + contentWidth * 0.70, y + 15);
-  doc.text('Colegiado: 28/48201', margin + contentWidth * 0.70, y + 20);
+  // Column 3: Destination
+  doc.text(profile.doctor ? `Médico: ${profile.doctor}` : 'Consulta de Valoración', margin + contentWidth * 0.70, y + 10);
+  doc.text(profile.clinic || 'Automonitorización AMPA', margin + contentWidth * 0.70, y + 15);
+  doc.text('Protocolo Clínico ESH/ESC', margin + contentWidth * 0.70, y + 20);
 
   y += 28;
 
@@ -302,38 +302,26 @@ export function generatePlanPdfReport(
   }
 
   // 5. Clinical Observation Box
-  if (y > pageHeight - 45) {
+  if (y > pageHeight - 40) {
     doc.addPage();
     y = margin;
   }
 
   doc.setFillColor(...lightBg);
   doc.setDrawColor(...borderGray);
-  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, 'FD');
+  doc.roundedRect(margin, y, contentWidth, 18, 2, 2, 'FD');
 
   doc.setTextColor(...primaryTeal);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('DICTAMEN / OBSERVACIONES CLÍNICAS (CARDIOLOGÍA)', margin + 4, y + 5);
+  doc.text('ESPACIO PARA OBSERVACIONES Y VALORACIÓN MÉDICA EN CONSULTA', margin + 4, y + 5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...darkSlate);
-  const noteContent = doctorNote?.content ||
-    'Seguimiento domiciliario de tensión arterial según protocolo clínico AMPA. Registro de tomas matutinas y vespertinas para valoración en consulta externa.';
-  
-  const splitNotes = doc.splitTextToSize(noteContent, contentWidth - 8);
-  doc.text(splitNotes, margin + 4, y + 9.5);
-
   doc.setFontSize(7);
   doc.setTextColor(...secondarySlate);
-  doc.text(
-    `Firma Digital: ${doctorNote?.doctorName || 'Dr. Manuel Varela'} (Col. 28/48201)  ·  Adherencia reportada: ${doctorNote?.adherence || '100%'}`,
-    margin + 4,
-    y + 19
-  );
+  doc.text('Informe clínico de automonitorización domiciliaria según criterios ESH/ESC 2023 para valoración del paciente.', margin + 4, y + 11);
 
-  y += 25;
+  y += 22;
 
   // 6. Footer Stamp
   doc.setFontSize(6.5);

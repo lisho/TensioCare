@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Heart, Calendar, ChevronDown, Sun, Moon, Minus, Plus, 
-  Coffee, Armchair, Pill, AlertCircle, CheckCircle2, UserCheck
+  Coffee, Armchair, Pill, AlertCircle, CheckCircle2, UserCheck,
+  Clock, RotateCcw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Measurement, TimeOfDay } from '../../types';
 import { classifyBloodPressure } from '../../utils/eshClassifier';
-import { getLocalDateString } from '../../utils/dateUtils';
+import { 
+  getLocalDateString, 
+  getLocalTimeString, 
+  getYesterdayDateString, 
+  formatDateWithContext 
+} from '../../utils/dateUtils';
 
 interface RegisterScreenProps {
   onSaveMeasurement: (measurement: Omit<Measurement, 'id'>) => void;
   activePeriodTitle: string;
   onChangePeriodClick: () => void;
   initialTimeOfDay?: TimeOfDay;
+  initialDate?: string;
+  initialTime?: string;
+  startWithCustomDateOpen?: boolean;
 }
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({
@@ -20,6 +29,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   activePeriodTitle,
   onChangePeriodClick,
   initialTimeOfDay = 'manana',
+  initialDate,
+  initialTime,
+  startWithCustomDateOpen = false,
 }) => {
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(initialTimeOfDay);
   const [tas, setTas] = useState<number>(120);
@@ -32,6 +44,17 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   const [arm, setArm] = useState<'Brazo Izq.' | 'Brazo Der.'>('Brazo Izq.');
   const [isSavedRecently, setIsSavedRecently] = useState<boolean>(false);
   const [isFavoriteActive, setIsFavoriteActive] = useState<boolean>(false);
+
+  // Custom retroactive date and time state
+  const [isDateDropdownOpen, setIsDateDropdownOpen] = useState<boolean>(startWithCustomDateOpen);
+  const [measurementDate, setMeasurementDate] = useState<string>(initialDate || getLocalDateString());
+  const [measurementTime, setMeasurementTime] = useState<string>(initialTime || getLocalTimeString());
+
+  useEffect(() => {
+    if (startWithCustomDateOpen) {
+      setIsDateDropdownOpen(true);
+    }
+  }, [startWithCustomDateOpen]);
 
   // Dynamic classification according to ESH/ESC 2023
   const classification = classifyBloodPressure(tas, tad);
@@ -50,9 +73,8 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
   };
 
   const handleSave = () => {
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const dateStr = getLocalDateString(now);
+    const dateStr = measurementDate || getLocalDateString();
+    const timeStr = measurementTime || getLocalTimeString();
 
     onSaveMeasurement({
       periodId: 'ciclo-actual',
@@ -131,6 +153,149 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
           <span>Cambiar</span>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
         </button>
+      </div>
+
+      {/* Selector Desplegable de Fecha y Hora (Añadir datos antiguos) */}
+      <div className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+        isDateDropdownOpen 
+          ? 'bg-[#f0f7fd] border-[#005570]/30 shadow-xs' 
+          : measurementDate !== getLocalDateString()
+            ? 'bg-amber-50/70 border-amber-200 shadow-2xs'
+            : 'bg-white border-slate-200/80 shadow-2xs'
+      }`}>
+        <div 
+          onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
+          className="p-3.5 flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-2xs ${
+              measurementDate !== getLocalDateString()
+                ? 'bg-amber-100 text-amber-800'
+                : 'bg-[#edf5fc] text-[#005570]'
+            }`}>
+              <Clock className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold tracking-wider uppercase text-slate-500">
+                  FECHA Y HORA DEL REGISTRO
+                </span>
+                {measurementDate !== getLocalDateString() && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                    Histórico / Pasado
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-bold text-slate-900 block leading-tight mt-0.5">
+                {formatDateWithContext(measurementDate)} • {measurementTime}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-[#005570] hidden sm:inline">
+              {isDateDropdownOpen ? 'Ocultar' : 'Modificar día a mano'}
+            </span>
+            <div className={`w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 transition-transform ${isDateDropdownOpen ? 'rotate-180 bg-slate-200' : ''}`}>
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+
+        {/* Desplegable desplegado */}
+        {isDateDropdownOpen && (
+          <div className="px-3.5 pb-4 pt-1 border-t border-slate-200/60 space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+            {/* Quick shortcuts pills */}
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
+              <span className="text-[11px] font-semibold text-slate-500">Accesos rápidos:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMeasurementDate(getLocalDateString());
+                  setMeasurementTime(getLocalTimeString());
+                }}
+                className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
+                  measurementDate === getLocalDateString()
+                    ? 'bg-[#005570] text-white shadow-2xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Hoy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMeasurementDate(getYesterdayDateString());
+                }}
+                className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
+                  measurementDate === getYesterdayDateString()
+                    ? 'bg-[#005570] text-white shadow-2xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Ayer
+              </button>
+              {measurementDate !== getLocalDateString() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMeasurementDate(getLocalDateString());
+                    setMeasurementTime(getLocalTimeString());
+                  }}
+                  className="px-2 py-1 text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer ml-auto"
+                  title="Restablecer a fecha actual"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Restablecer</span>
+                </button>
+              )}
+            </div>
+
+            {/* Inputs manuales: Fecha y Hora */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Día de la toma:
+                </label>
+                <input
+                  type="date"
+                  max={getLocalDateString()}
+                  value={measurementDate}
+                  onChange={(e) => {
+                    if (e.target.value) setMeasurementDate(e.target.value);
+                  }}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#005570] shadow-2xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Hora de la toma:
+                </label>
+                <input
+                  type="time"
+                  value={measurementTime}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setMeasurementTime(e.target.value);
+                      const [hour] = e.target.value.split(':').map(Number);
+                      if (hour < 14) {
+                        setTimeOfDay('manana');
+                      } else {
+                        setTimeOfDay('noche');
+                      }
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#005570] shadow-2xs"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-snug">
+              ℹ️ Permite incorporar registros pasados de tu tensiómetro para completar tu historial médico sin perder la continuidad del protocolo AMPA.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Momento del Día Selector */}
@@ -395,24 +560,15 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         </div>
       </div>
 
-      {/* Doctor Advice Quote Card matching screenshot */}
-      <div className="bg-[#eef4fa] rounded-2xl p-3.5 flex items-center gap-3 border border-blue-100/50">
-        <div className="w-12 h-12 rounded-full overflow-hidden bg-teal-800 flex items-center justify-center shrink-0 border-2 border-white shadow-xs">
-          {/* Doctor portrait SVG representation */}
-          <div className="w-full h-full bg-gradient-to-tr from-[#0b4d61] to-[#147a96] flex items-center justify-center text-white">
-            <UserCheck className="w-6 h-6 text-sky-100" />
-          </div>
-        </div>
-        <p className="text-xs text-slate-700 italic leading-snug">
-          &ldquo;La constancia en la misma franja horaria aporta el 80% del valor al diagnóstico.&rdquo;
-        </p>
-      </div>
-
       {/* Success Notification feedback if saved */}
       {isSavedRecently && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>¡Medición de tensión guardada correctamente en el protocolo activo!</span>
+          <span>
+            {measurementDate === getLocalDateString()
+              ? '¡Medición de tensión guardada correctamente en el protocolo activo!'
+              : `¡Medición retroactiva del ${formatDateWithContext(measurementDate)} guardada con éxito!`}
+          </span>
         </div>
       )}
 
@@ -423,7 +579,11 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({
         className="w-full py-3.5 rounded-xl bg-[#005570] hover:bg-[#004359] active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-[#005570]/20 transition-all cursor-pointer"
       >
         <CheckCircle2 className="w-4 h-4 stroke-[2.2]" />
-        <span>Guardar Medición</span>
+        <span>
+          {measurementDate === getLocalDateString()
+            ? 'Guardar Medición'
+            : `Guardar Medición (${formatDateWithContext(measurementDate)})`}
+        </span>
       </button>
     </div>
   );

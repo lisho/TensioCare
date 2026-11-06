@@ -3,14 +3,12 @@ import {
   Calendar, ChevronDown, TrendingUp, Info, Edit2, 
   FileText, Share2, Download, ShieldCheck, CheckCircle2, AlertTriangle, Activity
 } from 'lucide-react';
-import { Cycle, DoctorNote, Measurement } from '../../types';
+import { Cycle, Measurement } from '../../types';
 import { calculateStats, classifyBloodPressure } from '../../utils/eshClassifier';
 
 interface ReportScreenProps {
   activeCycle: Cycle;
   measurements: Measurement[];
-  doctorNote: DoctorNote;
-  onEditDoctorNote: () => void;
   onOpenPdfReport: () => void;
   onDownloadPdf?: () => void;
   onOpenShareModal: () => void;
@@ -20,8 +18,6 @@ interface ReportScreenProps {
 export const ReportScreen: React.FC<ReportScreenProps> = ({
   activeCycle,
   measurements,
-  doctorNote,
-  onEditDoctorNote,
   onOpenPdfReport,
   onDownloadPdf,
   onOpenShareModal,
@@ -402,44 +398,6 @@ export const ReportScreen: React.FC<ReportScreenProps> = ({
               <span>Registra tus tomas matutinas y nocturnas durante 7 días para completar el protocolo clínico AMPA.</span>
             )}
           </p>
-        </div>
-      </div>
-
-      {/* Notas y Observaciones Card */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm">📋</span>
-            <h3 className="font-extrabold text-[15px] text-[#0f2d3a]">
-              Notas y Observaciones
-            </h3>
-          </div>
-
-          <button
-            onClick={onEditDoctorNote}
-            className="text-xs font-semibold text-[#005570] hover:text-[#004156] flex items-center gap-1 cursor-pointer"
-          >
-            <Edit2 className="w-3 h-3" />
-            <span>Editar</span>
-          </button>
-        </div>
-
-        <div className="bg-[#f8fafc] rounded-xl p-3.5 border border-slate-100 space-y-2.5">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="w-2 h-2 rounded-full bg-[#005570]" />
-            <span className="font-bold text-slate-900">{doctorNote.doctorName}</span>
-            <span className="text-slate-400">({doctorNote.specialty})</span>
-            <span className="text-slate-400 ml-auto">{doctorNote.date}</span>
-          </div>
-
-          <p className="text-xs text-slate-700 leading-relaxed italic">
-            {doctorNote.content}
-          </p>
-
-          <div className="pt-2 border-t border-slate-200/60 flex items-center gap-1.5 text-xs text-teal-800 font-semibold">
-            <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
-            <span>{doctorNote.adherence}</span>
-          </div>
         </div>
       </div>
 

@@ -38,8 +38,7 @@ export function downloadMeasurementsCsv(cycle: Cycle, measurements: Measurement[
 
   const metadataRows = [
     `# Informe AMPA TensioCare - Automonitorizacion de Presion Arterial`,
-    `# Paciente: ${userProfileData.name} - Edad: ${userProfileData.age}`,
-    `# Medico Responsable: ${userProfileData.doctor}`,
+    `# Registro: Automonitorizacion Domiciliaria del Paciente`,
     `# Protocolo: ${cycle.title} (${cycle.dateRange})`,
     `# Criterio: Guia ESH/ESC 2023`,
     '',

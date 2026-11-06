@@ -9,7 +9,7 @@ interface PdfReportModalProps {
   onClose: () => void;
   cycle: Cycle;
   measurements: Measurement[];
-  doctorNote: DoctorNote;
+  doctorNote?: DoctorNote;
   userProfile?: UserProfile;
 }
 
@@ -26,7 +26,7 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
   const profile = userProfile || initialUserProfile;
 
   const handleDownloadPdf = () => {
-    generatePlanPdfReport(cycle, measurements, doctorNote, profile);
+    generatePlanPdfReport(cycle, measurements, undefined, profile);
   };
 
   const handlePrint = () => {
@@ -107,9 +107,9 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
             </div>
 
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">Médico Remitente</span>
-              <span className="font-bold text-slate-900">{doctorNote.doctorName || profile.doctor}</span>
-              <span className="text-slate-500 block text-[11px]">{doctorNote.specialty}</span>
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Destino Clínico</span>
+              <span className="font-bold text-slate-900">{profile.doctor || 'Consulta de Atención Médica'}</span>
+              <span className="text-slate-500 block text-[11px]">{profile.clinic || 'Automonitorización Domiciliaria AMPA'}</span>
             </div>
 
             <div>
@@ -216,16 +216,10 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
           </div>
         </div>
 
-        {/* Doctor Remarks */}
-        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 mb-6 text-xs text-slate-700">
-          <span className="font-bold text-slate-900 block mb-1">
-            Dictamen Clínico:
-          </span>
-          <p className="italic leading-relaxed">
-            {doctorNote.content}
-          </p>
-          <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Firma digital: {doctorNote.doctorName} (Col. Med. 28/48201)</span>
+        {/* Report Protocol Certification */}
+        <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50 mb-6 text-xs text-slate-600">
+          <div className="flex items-center justify-between text-[11px] text-slate-500">
+            <span>Certificación de datos: Registro estructurado según protocolo ESH/ESC 2023</span>
             <span>Fecha de emisión: {new Date().toLocaleDateString('es-ES')}</span>
           </div>
         </div>
