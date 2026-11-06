@@ -111,7 +111,7 @@ export default function App() {
     (m) => m.date === todayStr && m.timeOfDay === 'noche'
   );
 
-  // Handle saving a measurement directly to server JSON
+  // Handle saving a measurement directly to Firestore Cloud Database
   const handleSaveMeasurement = async (newM: Omit<Measurement, 'id'>) => {
     const tempId = `m-${Date.now()}`;
     const createdMeasurement: Measurement = {
@@ -123,32 +123,34 @@ export default function App() {
     // Optimistic UI update
     setMeasurements((prev) => [createdMeasurement, ...prev]);
 
+    let updatedCycleObj: Cycle | undefined;
     setCycles((prev) =>
       prev.map((c) => {
         if (c.id === activeCycleId) {
           const nextCompleted = Math.min(c.totalTakes, c.completedTakes + 1);
           const nextPercent = Math.round((nextCompleted / c.totalTakes) * 100);
-          return {
+          updatedCycleObj = {
             ...c,
             completedTakes: nextCompleted,
             progressPercent: nextPercent,
             dayProgress: nextCompleted >= 14 ? '7 de 7 Días' : c.dayProgress,
           };
+          return updatedCycleObj;
         }
         return c;
       })
     );
 
-    setSyncToastMessage('Guardando en archivo JSON del servidor...');
+    setSyncToastMessage('Guardando en la nube de Firebase Firestore...');
 
-    // Persist to Server JSON file
-    const res = await saveMeasurementToServer(createdMeasurement);
+    // Persist to Firestore Cloud Database
+    const res = await saveMeasurementToServer(createdMeasurement, updatedCycleObj);
     if (res.success) {
-      setStorageSource('server_json');
+      setStorageSource('firestore');
       setLastServerSync(new Date().toLocaleTimeString('es-ES'));
-      setSyncToastMessage('✓ Guardado y persistido en JSON del servidor.');
+      setSyncToastMessage('✓ Toma guardada y persistida en Firebase Firestore.');
     } else {
-      setSyncToastMessage('Toma registrada (guardada en memoria local).');
+      setSyncToastMessage('Toma registrada en memoria local.');
     }
 
     setTimeout(() => setSyncToastMessage(null), 3500);
@@ -160,11 +162,12 @@ export default function App() {
       prev.map((m) => (m.id === updated.id ? updated : m))
     );
 
-    setSyncToastMessage('Actualizando medición en el servidor JSON...');
+    setSyncToastMessage('Actualizando medición en la nube de Firebase...');
     const res = await updateMeasurementOnServer(updated);
     if (res.success) {
+      setStorageSource('firestore');
       setLastServerSync(new Date().toLocaleTimeString('es-ES'));
-      setSyncToastMessage('✓ Medición modificada y guardada en el JSON.');
+      setSyncToastMessage('✓ Medición modificada y guardada en Firestore.');
     } else {
       setSyncToastMessage('Medición actualizada localmente.');
     }
@@ -191,11 +194,12 @@ export default function App() {
       })
     );
 
-    setSyncToastMessage('Eliminando medición del servidor JSON...');
+    setSyncToastMessage('Eliminando medición de Firebase...');
     const res = await deleteMeasurementOnServer(id);
     if (res.success) {
+      setStorageSource('firestore');
       setLastServerSync(new Date().toLocaleTimeString('es-ES'));
-      setSyncToastMessage('✓ Medición eliminada del JSON.');
+      setSyncToastMessage('✓ Medición eliminada de Firestore.');
     } else {
       setSyncToastMessage('Medición eliminada localmente.');
     }
@@ -206,28 +210,31 @@ export default function App() {
     setCycles((prev) => [newCycle, ...prev]);
     setActiveCycleId(newCycle.id);
     
-    // Save to server
+    // Save to Firestore
     await saveCycleToServer(newCycle);
+    setStorageSource('firestore');
     setLastServerSync(new Date().toLocaleTimeString('es-ES'));
-    setSyncToastMessage(`Nuevo protocolo guardado en JSON del servidor.`);
+    setSyncToastMessage(`✓ Nuevo protocolo guardado en la nube de Firebase.`);
     setTimeout(() => setSyncToastMessage(null), 3000);
   };
 
   const handleUpdateDoctorNote = async (updated: DoctorNote) => {
     setDoctorNote(updated);
     await updateNoteOnServer(updated);
+    setStorageSource('firestore');
     setLastServerSync(new Date().toLocaleTimeString('es-ES'));
-    setSyncToastMessage('Nota clínica actualizada en el servidor JSON.');
+    setSyncToastMessage('✓ Nota clínica actualizada en la nube de Firebase.');
     setTimeout(() => setSyncToastMessage(null), 3000);
   };
 
   const handleUpdateUserProfile = async (updated: UserProfile) => {
     setUserProfile(updated);
-    setSyncToastMessage('Guardando ficha del paciente en el servidor JSON...');
+    setSyncToastMessage('Guardando ficha del paciente en Firebase...');
     const res = await updateUserProfileOnServer(updated);
     if (res.success) {
+      setStorageSource('firestore');
       setLastServerSync(new Date().toLocaleTimeString('es-ES'));
-      setSyncToastMessage('✓ Ficha del paciente guardada y persistida en el JSON.');
+      setSyncToastMessage('✓ Ficha del paciente guardada en Firestore.');
     } else {
       setSyncToastMessage('Ficha actualizada localmente.');
     }
@@ -237,7 +244,7 @@ export default function App() {
   const handleResetDb = async () => {
     await resetServerDatabase();
     await loadDataFromServer();
-    setSyncToastMessage('✓ Base de datos JSON restaurada a 0.');
+    setSyncToastMessage('✓ Base de datos de Firebase restaurada a 0.');
     setTimeout(() => setSyncToastMessage(null), 3000);
   };
 
