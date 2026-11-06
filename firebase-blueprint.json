@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "Cycle": {
+      "title": "Cycle",
+      "description": "Clinical tracking period (e.g. 7-day or 14-day AMPA protocol)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "dateRange": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["en_curso", "completado"] },
+        "statusLabel": { "type": "string" },
+        "dayProgress": { "type": "string" },
+        "progressPercent": { "type": "number" },
+        "completedTakes": { "type": "number" },
+        "totalTakes": { "type": "number" },
+        "classificationTag": { "type": "string" }
+      },
+      "required": ["id", "title", "startDate", "endDate", "status"]
+    },
+    "Measurement": {
+      "title": "Measurement",
+      "description": "Blood pressure and pulse measurement entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "periodId": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "timeOfDay": { "type": "string", "enum": ["manana", "noche"] },
+        "tas": { "type": "number" },
+        "tad": { "type": "number" },
+        "pulse": { "type": "number" },
+        "arm": { "type": "string" },
+        "context": { "type": "array" },
+        "notes": { "type": "string" },
+        "isOverLimit": { "type": "boolean" }
+      },
+      "required": ["id", "date", "time", "timeOfDay", "tas", "tad"]
+    },
+    "DoctorNote": {
+      "title": "DoctorNote",
+      "description": "Cardiologist clinical note and guidance",
+      "type": "object",
+      "properties": {
+        "doctorName": { "type": "string" },
+        "specialty": { "type": "string" },
+        "date": { "type": "string" },
+        "content": { "type": "string" },
+        "adherence": { "type": "string" }
+      }
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Patient medical file",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "number" },
+        "dni": { "type": "string" },
+        "doctor": { "type": "string" },
+        "clinic": { "type": "string" },
+        "currentMedication": { "type": "string" },
+        "protocol": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/cycles/{cycleId}": {
+      "schema": { "$ref": "#/entities/Cycle" },
+      "description": "Collection of clinical tracking cycles"
+    },
+    "/measurements/{measurementId}": {
+      "schema": { "$ref": "#/entities/Measurement" },
+      "description": "Collection of blood pressure measurement records"
+    },
+    "/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/DoctorNote" },
+      "description": "Doctor notes and recommendations"
+    },
+    "/userProfile/{profileId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Patient profile and medical record information"
+    }
+  }
+}

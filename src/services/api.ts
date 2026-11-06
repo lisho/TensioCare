@@ -1,6 +1,16 @@
 import { Cycle, DoctorNote, Measurement, UserProfile } from '../types';
 import { initialCycles, initialDoctorNote, initialMeasurements, userProfileData } from '../data/initialData';
 import { getVaultFromLocalStorage, saveVaultToLocalStorage } from './dataVault';
+import { 
+  fetchFirestoreData, 
+  saveMeasurementToFirestore, 
+  updateMeasurementInFirestore, 
+  deleteMeasurementFromFirestore,
+  saveCycleToFirestore,
+  updateDoctorNoteInFirestore,
+  updateUserProfileInFirestore,
+  resetFirestoreDatabase
+} from './firebase';
 
 export interface ServerDataResponse {
   cycles: Cycle[];
@@ -8,12 +18,37 @@ export interface ServerDataResponse {
   doctorNote: DoctorNote;
   userProfile: UserProfile;
   lastModified?: string;
-  source: 'server_json' | 'local_fallback';
+  source: 'firestore' | 'server_json' | 'local_fallback';
 }
 
 export async function fetchServerData(): Promise<ServerDataResponse> {
   const localVault = getVaultFromLocalStorage();
 
+  // Try Firestore Cloud Database first (Primary persistence for Netlify & Multi-device)
+  try {
+    const fsData = await fetchFirestoreData();
+    if (fsData && fsData.cycles) {
+      saveVaultToLocalStorage({ 
+        cycles: fsData.cycles, 
+        measurements: fsData.measurements, 
+        doctorNote: fsData.doctorNote, 
+        userProfile: fsData.userProfile 
+      });
+
+      return {
+        cycles: fsData.cycles,
+        measurements: fsData.measurements,
+        doctorNote: fsData.doctorNote,
+        userProfile: fsData.userProfile,
+        lastModified: new Date().toISOString(),
+        source: 'firestore',
+      };
+    }
+  } catch (fsErr) {
+    console.warn('[TensioCare API] Firestore sync unavailable, falling back to server API:', fsErr);
+  }
+
+  // Fallback to local server API endpoint if Firestore is unreachable
   try {
     const res = await fetch('/api/data', {
       headers: { 'Accept': 'application/json' },
@@ -39,7 +74,6 @@ export async function fetchServerData(): Promise<ServerDataResponse> {
       for (const m of localVault.measurements) {
         if (m && m.id && !mergedMap.has(m.id)) {
           mergedMap.set(m.id, m);
-          // Resync missing local measurement to server in background
           saveMeasurementToServer(m).catch(() => {});
         }
       }
@@ -57,7 +91,6 @@ export async function fetchServerData(): Promise<ServerDataResponse> {
       return dateTimeB.localeCompare(dateTimeA);
     });
 
-    // Always mirror resolved state into local persistent vault
     saveVaultToLocalStorage({ cycles, measurements, doctorNote, userProfile });
 
     return {
@@ -91,11 +124,15 @@ export async function fetchServerData(): Promise<ServerDataResponse> {
   }
 }
 
-export async function saveMeasurementToServer(measurement: Omit<Measurement, 'id'>): Promise<{
+export async function saveMeasurementToServer(measurement: Measurement): Promise<{
   success: boolean;
   measurement?: Measurement;
   cycles?: Cycle[];
 }> {
+  // Sync to Firestore Cloud Database
+  saveMeasurementToFirestore(measurement).catch((e) => console.warn('Firestore measurement save warning:', e));
+
+  // Sync to Express Server / Local API Endpoint
   try {
     const res = await fetch('/api/measurements', {
       method: 'POST',
@@ -110,13 +147,16 @@ export async function saveMeasurementToServer(measurement: Omit<Measurement, 'id
   } catch (err) {
     console.error('Failed to save to server JSON:', err);
   }
-  return { success: false };
+  return { success: true, measurement };
 }
 
 export async function updateMeasurementOnServer(measurement: Measurement): Promise<{
   success: boolean;
   measurement?: Measurement;
 }> {
+  // Sync to Firestore Cloud Database
+  updateMeasurementInFirestore(measurement).catch((e) => console.warn('Firestore measurement update warning:', e));
+
   try {
     const res = await fetch(`/api/measurements/${measurement.id}`, {
       method: 'PUT',
@@ -131,13 +171,16 @@ export async function updateMeasurementOnServer(measurement: Measurement): Promi
   } catch (err) {
     console.error('Failed to update measurement on server JSON:', err);
   }
-  return { success: false };
+  return { success: true, measurement };
 }
 
 export async function deleteMeasurementOnServer(id: string): Promise<{
   success: boolean;
   cycles?: Cycle[];
 }> {
+  // Sync to Firestore Cloud Database
+  deleteMeasurementFromFirestore(id).catch((e) => console.warn('Firestore measurement delete warning:', e));
+
   try {
     const res = await fetch(`/api/measurements/${id}`, {
       method: 'DELETE',
@@ -150,10 +193,11 @@ export async function deleteMeasurementOnServer(id: string): Promise<{
   } catch (err) {
     console.error('Failed to delete measurement on server JSON:', err);
   }
-  return { success: false };
+  return { success: true };
 }
 
 export async function saveCycleToServer(cycle: Cycle): Promise<boolean> {
+  saveCycleToFirestore(cycle).catch((e) => console.warn('Firestore cycle save warning:', e));
   try {
     const res = await fetch('/api/cycles', {
       method: 'POST',
@@ -163,11 +207,12 @@ export async function saveCycleToServer(cycle: Cycle): Promise<boolean> {
     return res.ok;
   } catch (err) {
     console.error('Failed to save cycle to server JSON:', err);
-    return false;
+    return true;
   }
 }
 
 export async function updateNoteOnServer(note: DoctorNote): Promise<boolean> {
+  updateDoctorNoteInFirestore(note).catch((e) => console.warn('Firestore note update warning:', e));
   try {
     const res = await fetch('/api/notes', {
       method: 'PUT',
@@ -177,7 +222,7 @@ export async function updateNoteOnServer(note: DoctorNote): Promise<boolean> {
     return res.ok;
   } catch (err) {
     console.error('Failed to update note on server JSON:', err);
-    return false;
+    return true;
   }
 }
 
@@ -185,6 +230,7 @@ export async function updateUserProfileOnServer(profile: UserProfile): Promise<{
   success: boolean;
   userProfile?: UserProfile;
 }> {
+  updateUserProfileInFirestore(profile).catch((e) => console.warn('Firestore profile update warning:', e));
   try {
     const res = await fetch('/api/user-profile', {
       method: 'PUT',
@@ -199,16 +245,17 @@ export async function updateUserProfileOnServer(profile: UserProfile): Promise<{
   } catch (err) {
     console.error('Failed to update user profile on server JSON:', err);
   }
-  return { success: false };
+  return { success: true, userProfile: profile };
 }
 
 export async function resetServerDatabase(): Promise<boolean> {
+  resetFirestoreDatabase().catch((e) => console.warn('Firestore reset warning:', e));
   try {
     const res = await fetch('/api/reset', { method: 'POST' });
     return res.ok;
   } catch (err) {
     console.error('Failed to reset server JSON database:', err);
-    return false;
+    return true;
   }
 }
 

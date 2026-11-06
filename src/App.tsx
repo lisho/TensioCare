@@ -48,7 +48,7 @@ export default function App() {
   const [preselectedTimeOfDay, setPreselectedTimeOfDay] = useState<TimeOfDay>('manana');
   
   // Storage and Sync state
-  const [storageSource, setStorageSource] = useState<'server_json' | 'local_fallback'>('local_fallback');
+  const [storageSource, setStorageSource] = useState<'firestore' | 'server_json' | 'local_fallback'>('firestore');
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastServerSync, setLastServerSync] = useState<string | null>(null);
 
@@ -319,12 +319,16 @@ export default function App() {
     <div className="min-h-screen bg-[#f1f5f9] text-[#102a36] flex flex-col items-center">
       {/* Desktop Mode & Server Storage Status Toolbar (hidden in print) */}
       <div className="hidden lg:flex items-center justify-between w-full max-w-4xl px-4 py-2.5 text-xs text-slate-500 border-b border-slate-200/80 bg-white/70 backdrop-blur-md no-print">
-        {/* Server JSON status indicator */}
+        {/* Storage status indicator */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-semibold">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <Database className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Almacenamiento JSON: Servidor Activo</span>
+            <span>
+              {storageSource === 'firestore'
+                ? 'Nube Firebase Firestore: Activo'
+                : 'Almacenamiento Local/JSON'}
+            </span>
           </div>
 
           <span className="text-[11px] text-slate-400">
@@ -408,7 +412,9 @@ export default function App() {
         <div className="lg:hidden px-4 pt-1 pb-0 flex items-center justify-between text-[10px] text-slate-500">
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span className="font-semibold text-slate-600">Servidor JSON: Conectado</span>
+            <span className="font-semibold text-slate-600">
+              {storageSource === 'firestore' ? 'Nube Firebase: Conectado' : 'Almacenamiento Local'}
+            </span>
           </div>
           <span className="text-slate-400">
             {lastServerSync ? `Sync ${lastServerSync}` : 'Sync OK'}
