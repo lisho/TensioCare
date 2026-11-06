@@ -22,6 +22,20 @@
   <body>
     <div id="root"></div>
     <script>
+      // Suppress Vite HMR WebSocket connection closed warnings in iframe sandbox
+      window.addEventListener('error', function(e) {
+        if (e && e.message && (e.message.includes('WebSocket') || e.message.includes('websocket') || e.message.includes('[vite]'))) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e && e.reason && (String(e.reason).includes('WebSocket') || String(e.reason).includes('websocket'))) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      });
+
       // Automatically eliminate Netlify floating logo or drawer if injected
       (function() {
         function removeNetlify() {

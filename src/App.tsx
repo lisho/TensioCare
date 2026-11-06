@@ -22,7 +22,8 @@ import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
 import { downloadMeasurementsCsv } from './utils/csvExport';
 import { generatePlanPdfReport } from './utils/pdfExport';
 import { getLocalDateString } from './utils/dateUtils';
-import { exportDatabaseBackup, parseBackupFile, saveVaultToLocalStorage } from './services/dataVault';
+import { exportDatabaseBackup, parseBackupFile, saveVaultToLocalStorage, getVaultFromLocalStorage } from './services/dataVault';
+import { subscribeToFirestore } from './services/firebase';
 import { 
   fetchServerData, 
   saveMeasurementToServer, 
@@ -40,11 +41,11 @@ import {
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<TabType>('hoy');
-  const [cycles, setCycles] = useState<Cycle[]>(initialCycles);
+  const [cycles, setCycles] = useState<Cycle[]>(() => getVaultFromLocalStorage()?.cycles || initialCycles);
   const [activeCycleId, setActiveCycleId] = useState<string>('ciclo-actual');
-  const [measurements, setMeasurements] = useState<Measurement[]>(initialMeasurements);
-  const [doctorNote, setDoctorNote] = useState<DoctorNote>(initialDoctorNote);
-  const [userProfile, setUserProfile] = useState<UserProfile>(initialUserProfile);
+  const [measurements, setMeasurements] = useState<Measurement[]>(() => getVaultFromLocalStorage()?.measurements || initialMeasurements);
+  const [doctorNote, setDoctorNote] = useState<DoctorNote>(() => getVaultFromLocalStorage()?.doctorNote || initialDoctorNote);
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => getVaultFromLocalStorage()?.userProfile || initialUserProfile);
   const [preselectedTimeOfDay, setPreselectedTimeOfDay] = useState<TimeOfDay>('manana');
   
   // Storage and Sync state
@@ -66,12 +67,12 @@ export default function App() {
   // Desktop viewport preview mode ('mobile' frame or 'expanded')
   const [viewMode, setViewMode] = useState<'mobile' | 'expanded'>('mobile');
 
-  // Load persistent data from server JSON on startup
+  // Load persistent data from server / Firestore on startup
   const loadDataFromServer = async () => {
     setIsSyncing(true);
     try {
       const data = await fetchServerData();
-      if (data.cycles) setCycles(data.cycles);
+      if (data.cycles && data.cycles.length > 0) setCycles(data.cycles);
       if (data.measurements) setMeasurements(data.measurements);
       if (data.doctorNote) setDoctorNote(data.doctorNote);
       if (data.userProfile) setUserProfile(data.userProfile);
@@ -82,7 +83,7 @@ export default function App() {
         setLastServerSync(new Date().toLocaleTimeString('es-ES'));
       }
     } catch (e) {
-      console.warn('Could not connect to server JSON storage:', e);
+      console.warn('Could not connect to server storage:', e);
     } finally {
       setIsSyncing(false);
     }
@@ -90,6 +91,27 @@ export default function App() {
 
   useEffect(() => {
     loadDataFromServer();
+
+    // Attach real-time subscription to Firestore Cloud Database
+    const unsubscribe = subscribeToFirestore({
+      onCycles: (newCycles) => {
+        if (newCycles.length > 0) setCycles(newCycles);
+      },
+      onMeasurements: (newMeasurements) => {
+        setMeasurements(newMeasurements);
+      },
+      onDoctorNote: (newNote) => {
+        if (newNote && newNote.doctorName) setDoctorNote(newNote);
+      },
+      onUserProfile: (newProfile) => {
+        if (newProfile && newProfile.name) setUserProfile(newProfile);
+      },
+      onError: (err) => {
+        console.warn('Realtime subscription issue:', err);
+      },
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Sync state changes to device localStorage vault automatically

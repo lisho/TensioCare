@@ -5,17 +5,43 @@ import {
   getDocs, 
   doc, 
   setDoc, 
-  updateDoc, 
   deleteDoc, 
   getDocFromServer,
-  writeBatch
+  writeBatch,
+  onSnapshot
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { Cycle, DoctorNote, Measurement, UserProfile } from '../types';
 import { initialCycles, initialDoctorNote, initialMeasurements, userProfileData } from '../data/initialData';
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = firebaseConfig.firestoreDatabaseId 
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
+
+/**
+ * Removes any undefined fields from objects before saving to Firestore,
+ * as Firestore throws an error if any field is undefined.
+ */
+export function cleanFirestoreData<T extends Record<string, any>>(obj: T): T {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        cleaned[key] = cleanFirestoreData(value);
+      } else if (Array.isArray(value)) {
+        cleaned[key] = value.map((item) => 
+          item && typeof item === 'object' && !(item instanceof Date)
+            ? cleanFirestoreData(item)
+            : item
+        );
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned as T;
+}
 
 /**
  * Validates connection to Firestore Cloud Database
@@ -30,9 +56,94 @@ export async function testFirestoreConnection(): Promise<boolean> {
       console.warn('[TensioCare Firebase] El cliente está en modo offline.');
       return false;
     }
-    // Expected error if document doesn't exist, means connection works
     return true;
   }
+}
+
+export interface FirestoreSubscriptions {
+  onCycles?: (cycles: Cycle[]) => void;
+  onMeasurements?: (measurements: Measurement[]) => void;
+  onDoctorNote?: (note: DoctorNote) => void;
+  onUserProfile?: (profile: UserProfile) => void;
+  onError?: (err: any) => void;
+}
+
+/**
+ * Subscribes to Firestore collections in real time with individual callbacks.
+ * This guarantees that updates to one collection never accidentally overwrite or clear another collection.
+ */
+export function subscribeToFirestore(callbacks: FirestoreSubscriptions): () => void {
+  const unsubCycles = onSnapshot(
+    collection(db, 'cycles'),
+    (snap) => {
+      if (!snap.empty && callbacks.onCycles) {
+        const cycles: Cycle[] = [];
+        snap.forEach((d) => cycles.push(d.data() as Cycle));
+        callbacks.onCycles(cycles);
+      }
+    },
+    (err) => {
+      console.warn('[TensioCare Firebase] Realtime cycles warning:', err);
+      callbacks.onError?.(err);
+    }
+  );
+
+  const unsubMeasurements = onSnapshot(
+    collection(db, 'measurements'),
+    (snap) => {
+      if (callbacks.onMeasurements) {
+        const measurements: Measurement[] = [];
+        snap.forEach((d) => measurements.push(d.data() as Measurement));
+        measurements.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+        callbacks.onMeasurements(measurements);
+      }
+    },
+    (err) => {
+      console.warn('[TensioCare Firebase] Realtime measurements warning:', err);
+      callbacks.onError?.(err);
+    }
+  );
+
+  const unsubNotes = onSnapshot(
+    collection(db, 'notes'),
+    (snap) => {
+      if (callbacks.onDoctorNote) {
+        snap.forEach((d) => {
+          if (d.id === 'doctorNote') {
+            callbacks.onDoctorNote!(d.data() as DoctorNote);
+          }
+        });
+      }
+    },
+    (err) => {
+      console.warn('[TensioCare Firebase] Realtime notes warning:', err);
+      callbacks.onError?.(err);
+    }
+  );
+
+  const unsubProfile = onSnapshot(
+    collection(db, 'userProfile'),
+    (snap) => {
+      if (callbacks.onUserProfile) {
+        snap.forEach((d) => {
+          if (d.id === 'patientProfile') {
+            callbacks.onUserProfile!(d.data() as UserProfile);
+          }
+        });
+      }
+    },
+    (err) => {
+      console.warn('[TensioCare Firebase] Realtime userProfile warning:', err);
+      callbacks.onError?.(err);
+    }
+  );
+
+  return () => {
+    unsubCycles();
+    unsubMeasurements();
+    unsubNotes();
+    unsubProfile();
+  };
 }
 
 /**
@@ -75,25 +186,25 @@ export async function fetchFirestoreData(): Promise<{
     if (cycles.length === 0) {
       cycles = initialCycles;
       for (const c of cycles) {
-        await setDoc(doc(db, 'cycles', c.id), c);
+        await setDoc(doc(db, 'cycles', c.id), cleanFirestoreData(c));
       }
     }
 
     if (measurements.length === 0 && initialMeasurements.length > 0) {
       measurements = initialMeasurements;
       for (const m of measurements) {
-        await setDoc(doc(db, 'measurements', m.id), m);
+        await setDoc(doc(db, 'measurements', m.id), cleanFirestoreData(m));
       }
     }
 
     if (!doctorNote) {
       doctorNote = initialDoctorNote;
-      await setDoc(doc(db, 'notes', 'doctorNote'), doctorNote);
+      await setDoc(doc(db, 'notes', 'doctorNote'), cleanFirestoreData(doctorNote));
     }
 
     if (!userProfile) {
       userProfile = userProfileData;
-      await setDoc(doc(db, 'userProfile', 'patientProfile'), userProfile);
+      await setDoc(doc(db, 'userProfile', 'patientProfile'), cleanFirestoreData(userProfile));
     }
 
     // Sort measurements descending by date/time
@@ -114,7 +225,8 @@ export async function fetchFirestoreData(): Promise<{
 
 export async function saveMeasurementToFirestore(m: Measurement): Promise<boolean> {
   try {
-    await setDoc(doc(db, 'measurements', m.id), m);
+    const payload = cleanFirestoreData(m);
+    await setDoc(doc(db, 'measurements', m.id), payload);
     return true;
   } catch (err) {
     console.error('[TensioCare Firebase] Error saving measurement:', err);
@@ -124,7 +236,8 @@ export async function saveMeasurementToFirestore(m: Measurement): Promise<boolea
 
 export async function updateMeasurementInFirestore(m: Measurement): Promise<boolean> {
   try {
-    await setDoc(doc(db, 'measurements', m.id), m, { merge: true });
+    const payload = cleanFirestoreData(m);
+    await setDoc(doc(db, 'measurements', m.id), payload, { merge: true });
     return true;
   } catch (err) {
     console.error('[TensioCare Firebase] Error updating measurement:', err);
@@ -144,7 +257,8 @@ export async function deleteMeasurementFromFirestore(id: string): Promise<boolea
 
 export async function saveCycleToFirestore(c: Cycle): Promise<boolean> {
   try {
-    await setDoc(doc(db, 'cycles', c.id), c);
+    const payload = cleanFirestoreData(c);
+    await setDoc(doc(db, 'cycles', c.id), payload);
     return true;
   } catch (err) {
     console.error('[TensioCare Firebase] Error saving cycle:', err);
@@ -154,7 +268,8 @@ export async function saveCycleToFirestore(c: Cycle): Promise<boolean> {
 
 export async function updateDoctorNoteInFirestore(note: DoctorNote): Promise<boolean> {
   try {
-    await setDoc(doc(db, 'notes', 'doctorNote'), note);
+    const payload = cleanFirestoreData(note);
+    await setDoc(doc(db, 'notes', 'doctorNote'), payload);
     return true;
   } catch (err) {
     console.error('[TensioCare Firebase] Error updating doctor note:', err);
@@ -164,7 +279,8 @@ export async function updateDoctorNoteInFirestore(note: DoctorNote): Promise<boo
 
 export async function updateUserProfileInFirestore(profile: UserProfile): Promise<boolean> {
   try {
-    await setDoc(doc(db, 'userProfile', 'patientProfile'), profile);
+    const payload = cleanFirestoreData(profile);
+    await setDoc(doc(db, 'userProfile', 'patientProfile'), payload);
     return true;
   } catch (err) {
     console.error('[TensioCare Firebase] Error updating user profile:', err);
@@ -174,7 +290,7 @@ export async function updateUserProfileInFirestore(profile: UserProfile): Promis
 
 export async function resetFirestoreDatabase(): Promise<boolean> {
   try {
-    // Clear collections
+    // Clear measurements collection
     const mSnap = await getDocs(collection(db, 'measurements'));
     const batch = writeBatch(db);
     mSnap.forEach((d) => batch.delete(d.ref));
@@ -182,10 +298,10 @@ export async function resetFirestoreDatabase(): Promise<boolean> {
 
     // Re-seed cycles
     for (const c of initialCycles) {
-      await setDoc(doc(db, 'cycles', c.id), c);
+      await setDoc(doc(db, 'cycles', c.id), cleanFirestoreData(c));
     }
-    await setDoc(doc(db, 'notes', 'doctorNote'), initialDoctorNote);
-    await setDoc(doc(db, 'userProfile', 'patientProfile'), userProfileData);
+    await setDoc(doc(db, 'notes', 'doctorNote'), cleanFirestoreData(initialDoctorNote));
+    await setDoc(doc(db, 'userProfile', 'patientProfile'), cleanFirestoreData(userProfileData));
 
     return true;
   } catch (err) {
